@@ -24,10 +24,10 @@ classifiers = [
 dynamic = ["version"]
 dependencies = [
     "orjson",
-    "async-lru",
+    "async-cache",
     "titiler-core>=2.0.0b2,<2.1",
-    #"rio-tiler[async]==9.0.0rc1",
-    "rio-tiler[async]@git+https://github.com/cogeotiff/rio-tiler.git@patch/remove-useless-async-methods",
+    "rio-tiler[async]==9.0.0rc1",
+    "async-tiff@git+https://github.com/developmentseed/async-tiff.git@kyle/predictor-uncropeed#subdirectory=python",
     "starlette-cramjam>=0.4,<0.6",
     "pydantic-settings~=2.0",
 ]

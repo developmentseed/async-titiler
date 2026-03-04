@@ -1,8 +1,8 @@
 """Tests for async_titiler.io"""
 
 import os
-import pytest
 
+import pytest
 from async_geotiff import GeoTIFF
 
 from async_titiler.io import DatasetPathParams
@@ -12,6 +12,7 @@ PREFIX = os.path.join(os.path.dirname(__file__), "fixtures")
 COG_PATH = os.path.join(PREFIX, "cog_uint8_rgb_nodata.tif")
 COG_FILE = f"file://{COG_PATH}"
 COG_URL_HTTP = "https://raw.githubusercontent.com/developmentseed/geotiff-test-data/refs/heads/main/rasterio_generated/fixtures/cog_uint8_rgb_nodata.tif"
+
 
 @pytest.mark.parametrize(
     "url",
@@ -35,5 +36,5 @@ async def test_dataset_path_params_returns_geotiff(url):
 @pytest.mark.asyncio
 async def test_dataset_path_params_invalid_url():
     """DatasetPathParams should raise on a non-existent file."""
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017
         await DatasetPathParams(url="file:///nonexistent/path/file.tif")

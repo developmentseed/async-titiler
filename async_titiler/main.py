@@ -4,12 +4,10 @@ from typing import Annotated, Any, Literal
 
 import httpx
 import jinja2
-import morecantile
 import rasterio
 from fastapi import FastAPI, Query
 from fastapi import __version__ as fastapi_version
 from fastapi.responses import ORJSONResponse
-from morecantile import TileMatrixSets
 from pydantic import __version__ as pydantic_version
 from rio_tiler import __version__ as rio_tiler_version
 from starlette import __version__ as starlette_version
@@ -17,23 +15,16 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.templating import Jinja2Templates
 
-from titiler.core.resources.enums import MediaType
-from titiler.core import __version__ as titiler_version
-from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers
-from titiler.core.factory import (
-    AlgorithmFactory,
-    ColorMapFactory,
-    TMSFactory,
-)
-from titiler.core.middleware import CacheControlMiddleware, LoggerMiddleware
-from titiler.core.models.OGC import Conformance, Landing
-from titiler.core.resources.enums import OptionalHeader
-from titiler.core.utils import accept_media_type, create_html_response, update_openapi
-
-
+from async_titiler import __version__ as async_titiler_version
 from async_titiler.factory import AsyncTilerFactory
 from async_titiler.settings import ApiSettings
-from async_titiler import __version__ as async_titiler_version
+from titiler.core import __version__ as titiler_version
+from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers
+from titiler.core.factory import AlgorithmFactory, ColorMapFactory, TMSFactory
+from titiler.core.middleware import CacheControlMiddleware, LoggerMiddleware
+from titiler.core.models.OGC import Conformance, Landing
+from titiler.core.resources.enums import MediaType, OptionalHeader
+from titiler.core.utils import accept_media_type, create_html_response, update_openapi
 
 settings = ApiSettings()
 
