@@ -14,7 +14,7 @@ from fastapi import Query
 from obstore.store import from_url
 
 
-@AsyncTTL(time_to_live=60)
+@AsyncTTL(time_to_live=300)
 async def _find_bucket_region(bucket: str, use_https: bool = True) -> str | None:
     prefix = "https" if use_https else "http"
     async with httpx.AsyncClient() as client:
@@ -22,7 +22,7 @@ async def _find_bucket_region(bucket: str, use_https: bool = True) -> str | None
     return response.headers.get("x-amz-bucket-region")
 
 
-@AsyncTTL(time_to_live=60)
+@AsyncTTL(time_to_live=300)
 async def _get_geotiff(url: str) -> GeoTIFF:
     parsed = urlparse(url)
     if not parsed.scheme:
