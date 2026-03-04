@@ -1,0 +1,62 @@
+name: CI
+
+# Triggers on pushes to main, dev and tags.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+    - main
+    - develop
+    tags:
+    - '*'
+    paths:
+      # Only run test and docker publish if some code have changed
+      - 'pyproject.toml'
+      - 'titiler/**'
+      - '.pre-commit-config.yaml'
+      - '.github/workflows/ci.yml'
+      - 'uv.lock'
+
+  # Run tests on pull requests.
+  pull_request:
+env:
+  LATEST_PY_VERSION: '3.14'
+
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12', '3.13', '3.14']
+
+    steps:
+      - uses: actions/checkout@v5
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.9.*" 
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          uv sync
+
+      - name: run pre-commit
+        if: ${{ matrix.python-version == env.LATEST_PY_VERSION }}
+        run: |
+          uv run pre-commit run --all-files
+
+      - name: Run tests
+        run: uv run pytest --cov titiler.experimental --cov-report term-missing -s -vv
+
+      - name: Upload Results
+        if: ${{ matrix.python-version == env.LATEST_PY_VERSION }}
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage.xml
+          flags: unittests
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
