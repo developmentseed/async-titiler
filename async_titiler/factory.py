@@ -30,6 +30,7 @@ from titiler.core.dependencies import (
     OGCMapsParams,
 )
 from titiler.core.factory import TilerFactory, img_endpoint_params
+from titiler.core.models.mapbox import TileJSON
 from titiler.core.models.OGC import TileSet, TileSetList
 from titiler.core.models.responses import (
     InfoGeoJSON,
@@ -692,6 +693,89 @@ class AsyncTilerFactory(TilerFactory):
                 headers["Content-Crs"] = f"<{uri}>"
 
             return Response(content, media_type=media_type, headers=headers)
+
+    def tilejson(self):  # noqa: C901
+        """Register /tilejson.json endpoint."""
+
+        available_tms = tuple(self.supported_tms.list())
+
+        @self.router.get(
+            "/{tileMatrixSetId}/tilejson.json",
+            response_model=TileJSON,
+            responses={200: {"description": "Return a tilejson"}},
+            response_model_exclude_none=True,
+            operation_id=f"{self.operation_prefix}getTileJSON",
+        )
+        async def tilejson(
+            request: Request,
+            tileMatrixSetId: Annotated[
+                Literal[available_tms],
+                Path(
+                    description="Identifier selecting one of the TileMatrixSetId supported."
+                ),
+            ],
+            tilesize: Annotated[
+                int | None,
+                Query(gt=0, description="Tilesize in pixels. Default to 512."),
+            ] = 512,
+            tile_format: Annotated[
+                ImageType | None,
+                Query(
+                    description="Default will be automatically defined if the output image needs a mask (png) or not (jpeg).",
+                ),
+            ] = None,
+            minzoom: Annotated[
+                int | None,
+                Query(description="Overwrite default minzoom."),
+            ] = None,
+            maxzoom: Annotated[
+                int | None,
+                Query(description="Overwrite default maxzoom."),
+            ] = None,
+            src_path=Depends(self.path_dependency),
+            reader_params=Depends(self.reader_dependency),
+            tile_params=Depends(self.tile_dependency),
+            layer_params=Depends(self.layer_dependency),
+            dataset_params=Depends(self.dataset_dependency),
+            post_process=Depends(self.process_dependency),
+            colormap=Depends(self.colormap_dependency),
+            render_params=Depends(self.render_dependency),
+        ):
+            """Return TileJSON document for a dataset."""
+            route_params = {
+                "z": "{z}",
+                "x": "{x}",
+                "y": "{y}",
+                "tileMatrixSetId": tileMatrixSetId,
+            }
+            if tile_format:
+                route_params["format"] = tile_format.value
+            tiles_url = self.url_for(request, "tile", **route_params)
+
+            qs_key_to_remove = [
+                "tilematrixsetid",
+                "tile_format",
+                "minzoom",
+                "maxzoom",
+            ]
+            qs: list[tuple[str, Any]] = [
+                (key, value)
+                for (key, value) in request.query_params._list
+                if key.lower() not in qs_key_to_remove
+            ]
+            if "tilesize" not in request.query_params:
+                qs.append(("tilesize", str(tilesize)))
+            tiles_url += f"?{urlencode(qs)}"
+
+            tms = self.supported_tms.get(tileMatrixSetId)
+            src_dst = self.reader(src_path, tms=tms, **reader_params.as_dict())
+            return {
+                "bounds": src_dst.get_geographic_bounds(tms.rasterio_geographic_crs),
+                "minzoom": minzoom if minzoom is not None else src_dst.minzoom,
+                "maxzoom": maxzoom if maxzoom is not None else src_dst.maxzoom,
+                "tiles": [tiles_url],
+                "attribution": os.environ.get("TITILER_DEFAULT_ATTRIBUTION"),
+            }
 
     ############################################################################
     # /point

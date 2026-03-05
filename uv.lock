@@ -75,9 +75,26 @@ wheels = [
 [[package]]
 name = "async-tiff"
 version = "0.7.0"
-source = { git = "https://github.com/developmentseed/async-tiff.git?subdirectory=python&rev=kyle%2Fpredictor-uncropeed#480ea1de05018e29916289a4dc4f4264f0dd02b0" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "obspec" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7c/7a/ff9e1887b4090132c7942ec097e0718c836261ed7f97ebf3e3b7bc750709/async_tiff-0.7.0-cp311-abi3-macosx_10_12_x86_64.whl", hash = "sha256:839c2d2d9d4601cc60f0464277496a973e01ef49b83f8ed54fa71198ff8ed804", size = 4122698, upload-time = "2026-03-03T22:32:58.252Z" },
+    { url = "https://files.pythonhosted.org/packages/45/23/5364c7119037ecd9d9cf78d1a1b3cbfcdf0458a2575504ca7062f0b14d31/async_tiff-0.7.0-cp311-abi3-macosx_11_0_arm64.whl", hash = "sha256:77ef4c8cb78fbe58c3e1db5449ed67d6b17d3c91bd6a6fdb8cf436d40ca15a01", size = 3841578, upload-time = "2026-03-03T22:32:59.507Z" },
+    { url = "https://files.pythonhosted.org/packages/f5/01/000364b81f67b126e080e955ebb1d4267f438a925a356a7a09ce3b495705/async_tiff-0.7.0-cp311-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:2953aa02f79b046455526aa8f52e0e8dcf5c1a7a702fc830da163a68a4840577", size = 4088525, upload-time = "2026-03-03T22:33:01.625Z" },
+    { url = "https://files.pythonhosted.org/packages/c6/ba/b6b84d87f9d4970e325ccadd2a976f5c143da1e03bbda7cb28ab8a83d478/async_tiff-0.7.0-cp311-abi3-manylinux_2_28_i686.whl", hash = "sha256:2a9c46292d1874c2aabc0f8c76bbcdeb74043f98296e6c50c2ea53c14d0fc023", size = 4178742, upload-time = "2026-03-03T22:33:02.925Z" },
+    { url = "https://files.pythonhosted.org/packages/19/1a/51311cc9dab8a2a3722d2fd4099363d83abc4891f1ddbe0415f18174e702/async_tiff-0.7.0-cp311-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:960a2dfe71b4f5d99fe5e530d4d30f90e14410860fbfbe19e23ea5a3e32d70cc", size = 4338115, upload-time = "2026-03-03T22:33:04.405Z" },
+    { url = "https://files.pythonhosted.org/packages/e9/4a/0780e3a0d406b084ab3e1c79b27f231ef64fe2ddd935e63f1325f68b6d0a/async_tiff-0.7.0-cp311-abi3-musllinux_1_2_i686.whl", hash = "sha256:25d8d92f8704a82085e17adc8d588669c24d3e02b0249f715b4b04bbbc74e632", size = 4205497, upload-time = "2026-03-03T22:33:05.612Z" },
+    { url = "https://files.pythonhosted.org/packages/e8/38/21bed394bb7022d55cbe4b938e4c13f3c1f421a76d3571934e6afb92ab8b/async_tiff-0.7.0-cp311-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:44d9d607f003ae6726baf1d3996f76e65ffb5ec4415836b654e5327cb8e9dfcd", size = 4474372, upload-time = "2026-03-03T22:33:08.652Z" },
+    { url = "https://files.pythonhosted.org/packages/6e/a0/a49020134f3c8f9d974fc3143c66afe9e1320a369828973434026362d1c0/async_tiff-0.7.0-cp311-abi3-win_amd64.whl", hash = "sha256:1ce3dcc3c4f9965e850a5427432fd1eea1fa9c4448e8453b556a6e9f118fd51b", size = 4097755, upload-time = "2026-03-03T22:33:10.16Z" },
+    { url = "https://files.pythonhosted.org/packages/25/6f/27b2040b974e191bdc28fd6e17fa2a001f6e4e68b21546b61c3073d5091c/async_tiff-0.7.0-pp311-pypy311_pp73-macosx_10_12_x86_64.whl", hash = "sha256:778930c050f9afa4432732a1172102696c072149a4e619fd497a2075d2008baa", size = 4118161, upload-time = "2026-03-03T22:33:11.648Z" },
+    { url = "https://files.pythonhosted.org/packages/ab/a7/3accc40d440b7cf7bdc7e3d49a98a47ef510857830edf18e8d74908a3912/async_tiff-0.7.0-pp311-pypy311_pp73-macosx_11_0_arm64.whl", hash = "sha256:76dc7dd7d60371c4884f35d1e7ec54d344dcae16ef9417585d10b8a1102a5a66", size = 3842297, upload-time = "2026-03-03T22:33:13.194Z" },
+    { url = "https://files.pythonhosted.org/packages/92/8d/a0fc193eaf7d10085fc65d9b0694a77f1040f7e14def7dda34f73bec315b/async_tiff-0.7.0-pp311-pypy311_pp73-manylinux_2_28_aarch64.whl", hash = "sha256:02b5a351227a4bb86c4e0d2cd0a9d96d57a8289442a1d56fb34ab332e586e607", size = 4087914, upload-time = "2026-03-03T22:33:14.453Z" },
+    { url = "https://files.pythonhosted.org/packages/b0/57/e656f488cef397e611f691c28cbd93a4ff53d4afa3e621f6cf48461dcf46/async_tiff-0.7.0-pp311-pypy311_pp73-manylinux_2_28_i686.whl", hash = "sha256:e59966d16409302434f2f38f6ef0b0f6c04400e4ca9113243ade65c9d024ab8c", size = 4173315, upload-time = "2026-03-03T22:33:15.694Z" },
+    { url = "https://files.pythonhosted.org/packages/f4/f9/e82c5cbe73ede031b2ca4dbd88856fdca9660c8d727560b6240630fa9da6/async_tiff-0.7.0-pp311-pypy311_pp73-manylinux_2_28_x86_64.whl", hash = "sha256:a18b8ca49d697ad4d014be2d3274241f63b4fe9cc12c3fb5595d3c8003194c6e", size = 4331034, upload-time = "2026-03-03T22:33:16.998Z" },
+    { url = "https://files.pythonhosted.org/packages/0a/a1/1ee3b888772c28df8902665c8147385ff8110da88cfd1e0c02bc082843a2/async_tiff-0.7.0-pp311-pypy311_pp73-musllinux_1_2_i686.whl", hash = "sha256:b2c7652467f187689675474c953488485d712b2c3cf4bbb98016fcf2f2a95804", size = 4201299, upload-time = "2026-03-03T22:33:18.403Z" },
+    { url = "https://files.pythonhosted.org/packages/03/40/50fb8ede114c44eb05b467d508c7d61bbe70f0425c141fc0b08e34944ebe/async_tiff-0.7.0-pp311-pypy311_pp73-musllinux_1_2_x86_64.whl", hash = "sha256:3e54670934f88e730433c4bd802439805c28152df8ee4ae7df7e5dc36c4b5944", size = 4468348, upload-time = "2026-03-03T22:33:19.711Z" },
 ]
 
 [[package]]
@@ -85,7 +102,6 @@ name = "async-titiler"
 source = { editable = "." }
 dependencies = [
     { name = "async-cache" },
-    { name = "async-tiff" },
     { name = "orjson" },
     { name = "pydantic-settings" },
     { name = "rio-tiler", extra = ["async"] },
@@ -110,10 +126,9 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "async-cache" },
-    { name = "async-tiff", git = "https://github.com/developmentseed/async-tiff.git?subdirectory=python&rev=kyle%2Fpredictor-uncropeed" },
     { name = "orjson" },
     { name = "pydantic-settings", specifier = "~=2.0" },
-    { name = "rio-tiler", extras = ["async"], specifier = "==9.0.0rc1" },
+    { name = "rio-tiler", extras = ["async"], git = "https://github.com/cogeotiff/rio-tiler.git" },
     { name = "starlette-cramjam", specifier = ">=0.4,<0.6" },
     { name = "titiler-core", specifier = ">=2.0.0b2,<2.1" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'server'", specifier = ">=0.12.0" },
@@ -1457,7 +1472,7 @@ wheels = [
 [[package]]
 name = "rio-tiler"
 version = "9.0.0rc1"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/cogeotiff/rio-tiler.git#d5f6fe64b7a4ec45a990f05f1bb1918d0d2229fd" }
 dependencies = [
     { name = "attrs" },
     { name = "cachetools" },
@@ -1471,10 +1486,6 @@ dependencies = [
     { name = "rasterio", version = "1.4.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "rasterio", version = "1.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "typing-extensions", marker = "python_full_version < '3.12'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/d1/f0/6ab8cdee02b06530de5c0b692e783dbe54ab600ef0ebd5a125fb14df3bc6/rio_tiler-9.0.0rc1.tar.gz", hash = "sha256:8305ebfae87fe22ab59e3d360fd8aee9117b8d64e45063aae8de1d75b19dcfcf", size = 190165, upload-time = "2026-03-03T23:40:10.772Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/de/b0/6661700726bd6640343fea70e011e341f89d710c78ebb972ec7692d130a4/rio_tiler-9.0.0rc1-py3-none-any.whl", hash = "sha256:c06fd197ce0d459c2e7b2d15ab14e307aeaa0075de2ae56995a125652e801bec", size = 286598, upload-time = "2026-03-03T23:40:12.265Z" },
 ]
 
 [package.optional-dependencies]
