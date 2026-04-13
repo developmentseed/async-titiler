@@ -10,6 +10,8 @@ from fastapi import __version__ as fastapi_version
 from fastapi.responses import ORJSONResponse
 from pydantic import __version__ as pydantic_version
 from rio_tiler import __version__ as rio_tiler_version
+from rio_tiler.experimental.geotiff import Reader as AsyncGeoTiFFReader
+from rio_tiler.experimental.zarr import GeoZarrReader as AsyncGeoZarrReader
 from starlette import __version__ as starlette_version
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
@@ -25,6 +27,8 @@ from titiler.core.middleware import CacheControlMiddleware, LoggerMiddleware
 from titiler.core.models.OGC import Conformance, Landing
 from titiler.core.resources.enums import MediaType, OptionalHeader
 from titiler.core.utils import accept_media_type, create_html_response, update_openapi
+
+from .dependencies import GeoTIFFPathParams, GeoZARRPathParams, LayerParams
 
 settings = ApiSettings()
 
@@ -84,9 +88,38 @@ APP_CONFORMS_TO = {
 }
 
 ###############################################################################
-# Tiling Endpoints
-endoints = AsyncTilerFactory(add_viewer=True, templates=templates)
-app.include_router(endoints.router)
+# Async-GeoTIFF Endpoints
+endoints = AsyncTilerFactory(
+    reader=AsyncGeoTiFFReader,
+    path_dependency=GeoTIFFPathParams,
+    add_viewer=True,
+    templates=templates,
+    router_prefix="/geotiff",
+)
+app.include_router(
+    endoints.router,
+    prefix="/geotiff",
+    tags=["GeoTIFF"],
+)
+
+APP_CONFORMS_TO.update(endoints.conforms_to)
+
+
+###############################################################################
+# GeoZARR Endpoints
+endoints = AsyncTilerFactory(
+    reader=AsyncGeoZarrReader,
+    path_dependency=GeoZARRPathParams,
+    layer_dependency=LayerParams,
+    add_viewer=True,
+    templates=templates,
+    router_prefix="/geozarr",
+)
+app.include_router(
+    endoints.router,
+    prefix="/geozarr",
+    tags=["GeoZARR"],
+)
 
 APP_CONFORMS_TO.update(endoints.conforms_to)
 
