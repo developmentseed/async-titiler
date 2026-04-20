@@ -5,7 +5,7 @@ import os
 import pytest
 from async_geotiff import GeoTIFF
 
-from async_titiler.io import DatasetPathParams
+from async_titiler.dependencies import GeoTIFFPathParams
 
 PREFIX = os.path.join(os.path.dirname(__file__), "fixtures")
 
@@ -24,8 +24,8 @@ COG_URL_HTTP = "https://raw.githubusercontent.com/developmentseed/geotiff-test-d
 )
 @pytest.mark.asyncio
 async def test_dataset_path_params_returns_geotiff(url):
-    """DatasetPathParams should return a GeoTIFF object."""
-    result = await DatasetPathParams(url=url)
+    """GeoTIFFPathParams should return a GeoTIFF object."""
+    result = await GeoTIFFPathParams(url=url)
     assert isinstance(result, GeoTIFF)
     assert result.bounds is not None
     assert result.crs is not None
@@ -35,6 +35,6 @@ async def test_dataset_path_params_returns_geotiff(url):
 
 @pytest.mark.asyncio
 async def test_dataset_path_params_invalid_url():
-    """DatasetPathParams should raise on a non-existent file."""
+    """GeoTIFFPathParams should raise on a non-existent file."""
     with pytest.raises(Exception):  # noqa: B017
-        await DatasetPathParams(url="file:///nonexistent/path/file.tif")
+        await GeoTIFFPathParams(url="file:///nonexistent/path/file.tif")

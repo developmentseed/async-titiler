@@ -25,9 +25,11 @@ dynamic = ["version"]
 dependencies = [
     "orjson",
     "async-cache",
-    "titiler-core>=2.0.0b2,<2.1",
-    # "rio-tiler[async]==9.0.0rc1",
-    "rio-tiler[async]@git+https://github.com/cogeotiff/rio-tiler.git",
+    "titiler-core>=2.0,<2.1",
+    "async-geotiff>=0.3,<0.5",
+    "zarr~=3.0",
+    "obstore",
+    "rio-tiler@git+https://github.com/cogeotiff/rio-tiler.git@feat/geozarr-reader",
     "starlette-cramjam>=0.4,<0.6",
     "pydantic-settings~=2.0",
 ]

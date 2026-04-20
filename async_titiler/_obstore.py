@@ -1,17 +1,20 @@
-"""async-titiler IO dependencies."""
+"""obstore utilities."""
+
+from __future__ import annotations
 
 import os
 import posixpath
 import re
 from pathlib import Path
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
 import httpx
-from async_geotiff import GeoTIFF
 from cache import AsyncTTL
-from fastapi import Query
 from obstore.store import from_url
+
+if TYPE_CHECKING:
+    from obstore.store import Store
 
 
 @AsyncTTL(time_to_live=300)
@@ -23,7 +26,7 @@ async def _find_bucket_region(bucket: str, use_https: bool = True) -> str | None
 
 
 @AsyncTTL(time_to_live=300)
-async def _get_geotiff(url: str) -> GeoTIFF:
+async def _get_store(url: str) -> Store:
     parsed = urlparse(url)
     if not parsed.scheme:
         url = str(Path(url).resolve())
@@ -75,22 +78,10 @@ async def _get_geotiff(url: str) -> GeoTIFF:
                     )
 
     directory = posixpath.dirname(parsed.path)
-    filename = posixpath.basename(parsed.path)
     store_url = f"{parsed.scheme}://{parsed.netloc}{directory}"
 
-    store = from_url(
+    return from_url(
         store_url,
         config=config,
         client_options=client_options,
     )
-    geotiff = await GeoTIFF.open(filename, store=store)
-
-    return geotiff
-
-
-# NOTE: Find a way to cache this
-async def DatasetPathParams(
-    url: Annotated[str, Query(description="Dataset URL")],
-) -> GeoTIFF:
-    """Create dataset path from args"""
-    return await _get_geotiff(url)
