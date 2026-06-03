@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
-import httpx
+import httpx2 as httpx
 from cache import AsyncTTL
 from obstore.store import from_url
 

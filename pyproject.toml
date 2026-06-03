@@ -29,7 +29,7 @@ dependencies = [
     "async-geotiff>=0.3,<0.5",
     "zarr~=3.0",
     "obstore",
-    "rio-tiler@git+https://github.com/cogeotiff/rio-tiler.git@feat/geozarr-reader",
+    "rio-tiler>=9.1,<10.0",
     "starlette-cramjam>=0.4,<0.6",
     "pydantic-settings~=2.0",
 ]

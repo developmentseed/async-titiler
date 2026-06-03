@@ -7,7 +7,6 @@ import jinja2
 import rasterio
 from fastapi import FastAPI, Query
 from fastapi import __version__ as fastapi_version
-from fastapi.responses import ORJSONResponse
 from pydantic import __version__ as pydantic_version
 from rio_tiler import __version__ as rio_tiler_version
 from rio_tiler.experimental.geotiff import Reader as AsyncGeoTiFFReader
@@ -148,7 +147,6 @@ APP_CONFORMS_TO.update(cmaps.conforms_to)
     "/",
     response_model=Landing,
     response_model_exclude_none=True,
-    response_class=ORJSONResponse,
     responses={
         200: {
             "content": {
