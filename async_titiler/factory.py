@@ -7,14 +7,12 @@ from typing import Annotated, Any, Literal
 from urllib.parse import urlencode
 
 import jinja2
-from async_geotiff import GeoTIFF
 from attrs import define
 from fastapi import Body, Depends, Path, Query
 from geojson_pydantic.features import Feature, FeatureCollection
 from pydantic import Field
 from rio_tiler.constants import WGS84_CRS
-from rio_tiler.experimental._async import AsyncBaseReader
-from rio_tiler.experimental._async import Reader as AsyncReader
+from rio_tiler.io import AsyncBaseReader
 from rio_tiler.models import Info
 from rio_tiler.utils import CRS_to_uri
 from starlette.requests import Request
@@ -47,8 +45,6 @@ from titiler.core.utils import (
     tms_limits,
 )
 
-from .io import DatasetPathParams
-
 jinja2_env = jinja2.Environment(
     autoescape=jinja2.select_autoescape(["html"]),
     loader=jinja2.ChoiceLoader([jinja2.PackageLoader(__package__, "templates")]),
@@ -63,10 +59,11 @@ logger = logging.getLogger(__name__)
 class AsyncTilerFactory(TilerFactory):
     """Async Tiler Factory."""
 
-    reader: type[AsyncBaseReader] = AsyncReader
+    # Dataset Reader
+    reader: type[AsyncBaseReader]
 
     # Path Dependency
-    path_dependency: Callable[..., GeoTIFF] = DatasetPathParams
+    path_dependency: Callable[..., Any]
 
     # Tile/Tilejson/WMTS Dependencies
     tile_dependency: type[DefaultDependency] = DefaultDependency
@@ -86,11 +83,11 @@ class AsyncTilerFactory(TilerFactory):
             operation_id=f"{self.operation_prefix}getInfo",
         )
         async def info(
-            geotiff=Depends(self.path_dependency),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
         ):
             """Return dataset's basic info."""
-            src_dst = self.reader(geotiff, **reader_params.as_dict())
+            src_dst = self.reader(dataset, **reader_params.as_dict())
             return await src_dst.info()
 
         @self.router.get(
@@ -107,12 +104,12 @@ class AsyncTilerFactory(TilerFactory):
             operation_id=f"{self.operation_prefix}getInfoGeoJSON",
         )
         async def info_geojson(
-            geotiff=Depends(self.path_dependency),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
             crs=Depends(CRSParams),
         ):
             """Return dataset's basic info as a GeoJSON feature."""
-            src_dst = self.reader(geotiff, **reader_params.as_dict())
+            src_dst = self.reader(dataset, **reader_params.as_dict())
             bounds = src_dst.get_geographic_bounds(crs or WGS84_CRS)
             geometry = bounds_to_geometry(bounds)
 
@@ -145,7 +142,7 @@ class AsyncTilerFactory(TilerFactory):
             operation_id=f"{self.operation_prefix}getStatistics",
         )
         async def statistics(
-            geotiff=Depends(self.path_dependency),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
             layer_params=Depends(self.layer_dependency),
             dataset_params=Depends(self.dataset_dependency),
@@ -155,7 +152,7 @@ class AsyncTilerFactory(TilerFactory):
             histogram_params=Depends(self.histogram_dependency),
         ):
             """Get Dataset statistics."""
-            src_dst = self.reader(geotiff, **reader_params.as_dict())
+            src_dst = self.reader(dataset, **reader_params.as_dict())
             image = await src_dst.preview(
                 **layer_params.as_dict(),
                 **image_params.as_dict(),
@@ -189,7 +186,7 @@ class AsyncTilerFactory(TilerFactory):
                 FeatureCollection | Feature,
                 Body(description="GeoJSON Feature or FeatureCollection."),
             ],
-            geotiff=Depends(self.path_dependency),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
             coord_crs=Depends(CoordCRSParams),
             dst_crs=Depends(DstCRSParams),
@@ -205,7 +202,7 @@ class AsyncTilerFactory(TilerFactory):
             if isinstance(fc, Feature):
                 fc = FeatureCollection(type="FeatureCollection", features=[geojson])
 
-                src_dst = self.reader(geotiff, **reader_params.as_dict())
+                src_dst = self.reader(dataset, **reader_params.as_dict())
                 for feature in fc.features:
                     shape = feature.model_dump(exclude_none=True)
                     image = await src_dst.feature(
@@ -264,7 +261,7 @@ class AsyncTilerFactory(TilerFactory):
         )
         async def tileset_list(
             request: Request,
-            geotiff=Depends(self.path_dependency),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
             crs=Depends(CRSParams),
             f: Annotated[
@@ -275,7 +272,7 @@ class AsyncTilerFactory(TilerFactory):
             ] = None,
         ):
             """Retrieve a list of available raster tilesets for the specified dataset."""
-            src_dst = self.reader(geotiff, **reader_params.as_dict())
+            src_dst = self.reader(dataset, **reader_params.as_dict())
             bounds = src_dst.get_geographic_bounds(crs or WGS84_CRS)
 
             collection_bbox = {
@@ -389,7 +386,7 @@ class AsyncTilerFactory(TilerFactory):
                     description="Identifier selecting one of the TileMatrixSetId supported."
                 ),
             ],
-            geotiff=Depends(self.path_dependency),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
             env=Depends(self.environment_dependency),
             f: Annotated[
@@ -401,7 +398,7 @@ class AsyncTilerFactory(TilerFactory):
         ):
             """Retrieve the raster tileset metadata for the specified dataset and tiling scheme (tile matrix set)."""
             tms = self.supported_tms.get(tileMatrixSetId)
-            src_dst = self.reader(geotiff, tms=tms, **reader_params.as_dict())
+            src_dst = self.reader(dataset, tms=tms, **reader_params.as_dict())
 
             bounds = src_dst.get_geographic_bounds(tms.rasterio_geographic_crs)
             minzoom = src_dst.minzoom
@@ -652,7 +649,7 @@ class AsyncTilerFactory(TilerFactory):
                 int | None,
                 Query(gt=0, description="Tilesize in pixels."),
             ] = None,
-            geotiff=Depends(self.path_dependency),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
             tile_params=Depends(self.tile_dependency),
             layer_params=Depends(self.layer_dependency),
@@ -664,7 +661,7 @@ class AsyncTilerFactory(TilerFactory):
             """Create map tile from a dataset."""
             tms = self.supported_tms.get(tileMatrixSetId)
 
-            src_dst = self.reader(geotiff, tms=tms, **reader_params.as_dict())
+            src_dst = self.reader(dataset, tms=tms, **reader_params.as_dict())
             image = await src_dst.tile(
                 x,
                 y,
@@ -793,14 +790,14 @@ class AsyncTilerFactory(TilerFactory):
         async def point(
             lon: Annotated[float, Path(description="Longitude")],
             lat: Annotated[float, Path(description="Latitude")],
-            geotiff=Depends(self.path_dependency),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
             coord_crs=Depends(CoordCRSParams),
             layer_params=Depends(self.layer_dependency),
             dataset_params=Depends(self.dataset_dependency),
         ):
             """Get Point value for a dataset."""
-            src_dst = self.reader(geotiff, **reader_params.as_dict())
+            src_dst = self.reader(dataset, **reader_params.as_dict())
             pts = await src_dst.point(
                 lon,
                 lat,
@@ -844,7 +841,7 @@ class AsyncTilerFactory(TilerFactory):
                     description="Default will be automatically defined if the output image needs a mask (png) or not (jpeg)."
                 ),
             ] = None,
-            geotiff=Depends(self.path_dependency),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
             layer_params=Depends(self.layer_dependency),
             dataset_params=Depends(self.dataset_dependency),
@@ -856,7 +853,7 @@ class AsyncTilerFactory(TilerFactory):
             env=Depends(self.environment_dependency),
         ):
             """Create preview of a dataset."""
-            src_dst = self.reader(geotiff, **reader_params.as_dict())
+            src_dst = self.reader(dataset, **reader_params.as_dict())
             image = await src_dst.preview(
                 **layer_params.as_dict(),
                 **image_params.as_dict(exclude_none=False),
@@ -911,7 +908,7 @@ class AsyncTilerFactory(TilerFactory):
                     description="Default will be automatically defined if the output image needs a mask (png) or not (jpeg).",
                 ),
             ],
-            geotiff=Depends(self.path_dependency),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
             layer_params=Depends(self.layer_dependency),
             dataset_params=Depends(self.dataset_dependency),
@@ -924,7 +921,7 @@ class AsyncTilerFactory(TilerFactory):
             env=Depends(self.environment_dependency),
         ):
             """Create image from a bbox."""
-            src_dst = self.reader(geotiff, **reader_params.as_dict())
+            src_dst = self.reader(dataset, **reader_params.as_dict())
             image = await src_dst.part(
                 [minx, miny, maxx, maxy],
                 dst_crs=dst_crs,
@@ -977,7 +974,7 @@ class AsyncTilerFactory(TilerFactory):
                     description="Default will be automatically defined if the output image needs a mask (png) or not (jpeg)."
                 ),
             ] = None,
-            geotiff=Depends(self.path_dependency),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
             layer_params=Depends(self.layer_dependency),
             dataset_params=Depends(self.dataset_dependency),
@@ -990,7 +987,7 @@ class AsyncTilerFactory(TilerFactory):
             env=Depends(self.environment_dependency),
         ):
             """Create image from a geojson feature."""
-            src_dst = self.reader(geotiff, **reader_params.as_dict())
+            src_dst = self.reader(dataset, **reader_params.as_dict())
             image = await src_dst.feature(
                 geojson.model_dump(exclude_none=True),
                 shape_crs=coord_crs or WGS84_CRS,
@@ -1049,7 +1046,7 @@ class AsyncTilerFactory(TilerFactory):
             **img_endpoint_params,
         )
         async def get_map(
-            geotiff=Depends(self.path_dependency),
+            dataset=Depends(self.path_dependency),
             ogc_params=Depends(OGCMapsParams),
             reader_params=Depends(self.reader_dependency),
             layer_params=Depends(self.layer_dependency),
@@ -1060,7 +1057,7 @@ class AsyncTilerFactory(TilerFactory):
             env=Depends(self.environment_dependency),
         ) -> Response:
             """OGC Maps API."""
-            src_dst = self.reader(geotiff, **reader_params.as_dict())
+            src_dst = self.reader(dataset, **reader_params.as_dict())
             if ogc_params.bbox is not None:
                 image = await src_dst.part(
                     ogc_params.bbox,
