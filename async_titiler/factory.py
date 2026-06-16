@@ -94,7 +94,7 @@ class AsyncTilerFactory(TilerFactory):
             operation_id=f"{self.operation_prefix}getInfo",
         )
         async def info(
-            dataset=Depends(self.path_dependency, use_cache=True),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
         ):
             """Return dataset's basic info."""
@@ -115,7 +115,7 @@ class AsyncTilerFactory(TilerFactory):
             operation_id=f"{self.operation_prefix}getInfoGeoJSON",
         )
         async def info_geojson(
-            dataset=Depends(self.path_dependency, use_cache=True),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
             crs=Depends(CRSParams),
         ):
@@ -153,7 +153,7 @@ class AsyncTilerFactory(TilerFactory):
             operation_id=f"{self.operation_prefix}getStatistics",
         )
         async def statistics(
-            dataset=Depends(self.path_dependency, use_cache=True),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
             layer_params=Depends(self.layer_dependency),
             dataset_params=Depends(self.dataset_dependency),
@@ -197,7 +197,7 @@ class AsyncTilerFactory(TilerFactory):
                 FeatureCollection | Feature,
                 Body(description="GeoJSON Feature or FeatureCollection."),
             ],
-            dataset=Depends(self.path_dependency, use_cache=True),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
             coord_crs=Depends(CoordCRSParams),
             dst_crs=Depends(DstCRSParams),
@@ -274,7 +274,7 @@ class AsyncTilerFactory(TilerFactory):
         )
         async def tileset_list(
             request: Request,
-            dataset=Depends(self.path_dependency, use_cache=True),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
             crs=Depends(CRSParams),
             f: Annotated[
@@ -399,7 +399,7 @@ class AsyncTilerFactory(TilerFactory):
                     description="Identifier selecting one of the TileMatrixSetId supported."
                 ),
             ],
-            dataset=Depends(self.path_dependency, use_cache=True),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
             minzoom: Annotated[
                 int | None,
@@ -564,7 +564,7 @@ class AsyncTilerFactory(TilerFactory):
                 int | None,
                 Query(description="Overwrite default maxzoom."),
             ] = None,
-            dataset=Depends(self.path_dependency, use_cache=True),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
             tile_params=Depends(self.tile_dependency),
             layer_params=Depends(self.layer_dependency),
@@ -668,7 +668,7 @@ class AsyncTilerFactory(TilerFactory):
                 int | None,
                 Query(gt=0, description="Tilesize in pixels."),
             ] = None,
-            dataset=Depends(self.path_dependency, use_cache=True),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
             tile_params=Depends(self.tile_dependency),
             layer_params=Depends(self.layer_dependency),
@@ -746,7 +746,7 @@ class AsyncTilerFactory(TilerFactory):
                 int | None,
                 Query(description="Overwrite default maxzoom."),
             ] = None,
-            dataset=Depends(self.path_dependency, use_cache=True),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
             tile_params=Depends(self.tile_dependency),
             layer_params=Depends(self.layer_dependency),
@@ -807,7 +807,7 @@ class AsyncTilerFactory(TilerFactory):
         async def point(
             lon: Annotated[float, Path(description="Longitude")],
             lat: Annotated[float, Path(description="Latitude")],
-            dataset=Depends(self.path_dependency, use_cache=True),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
             coord_crs=Depends(CoordCRSParams),
             layer_params=Depends(self.layer_dependency),
@@ -858,7 +858,7 @@ class AsyncTilerFactory(TilerFactory):
                     description="Default will be automatically defined if the output image needs a mask (png) or not (jpeg)."
                 ),
             ] = None,
-            dataset=Depends(self.path_dependency, use_cache=True),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
             layer_params=Depends(self.layer_dependency),
             dataset_params=Depends(self.dataset_dependency),
@@ -924,7 +924,7 @@ class AsyncTilerFactory(TilerFactory):
                     description="Default will be automatically defined if the output image needs a mask (png) or not (jpeg).",
                 ),
             ],
-            dataset=Depends(self.path_dependency, use_cache=True),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
             layer_params=Depends(self.layer_dependency),
             dataset_params=Depends(self.dataset_dependency),
@@ -989,7 +989,7 @@ class AsyncTilerFactory(TilerFactory):
                     description="Default will be automatically defined if the output image needs a mask (png) or not (jpeg)."
                 ),
             ] = None,
-            dataset=Depends(self.path_dependency, use_cache=True),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
             layer_params=Depends(self.layer_dependency),
             dataset_params=Depends(self.dataset_dependency),
@@ -1060,7 +1060,7 @@ class AsyncTilerFactory(TilerFactory):
             **img_endpoint_params,
         )
         async def get_map(
-            dataset=Depends(self.path_dependency, use_cache=True),
+            dataset=Depends(self.path_dependency),
             ogc_params=Depends(OGCMapsParams),
             reader_params=Depends(self.reader_dependency),
             layer_params=Depends(self.layer_dependency),
@@ -1143,7 +1143,7 @@ class AsyncMultiBaseTilerFactory(AsyncTilerFactory):
             operation_id=f"{self.operation_prefix}getInfo",
         )
         async def info(
-            dataset=Depends(self.path_dependency, use_cache=True),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
             asset_params=Depends(self.assets_dependency),
         ) -> MultiBaseInfo:
@@ -1168,7 +1168,7 @@ class AsyncMultiBaseTilerFactory(AsyncTilerFactory):
             operation_id=f"{self.operation_prefix}getInfoGeoJSON",
         )
         async def info_geojson(
-            dataset=Depends(self.path_dependency, use_cache=True),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
             asset_params=Depends(self.assets_dependency),
             crs=Depends(CRSParams),
@@ -1195,7 +1195,7 @@ class AsyncMultiBaseTilerFactory(AsyncTilerFactory):
             operation_id=f"{self.operation_prefix}getAssets",
         )
         async def available_assets(
-            dataset=Depends(self.path_dependency, use_cache=True),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
         ):
             """Return a list of supported assets."""
@@ -1221,7 +1221,7 @@ class AsyncMultiBaseTilerFactory(AsyncTilerFactory):
             operation_id=f"{self.operation_prefix}getAssetsStatistics",
         )
         async def asset_statistics(
-            dataset=Depends(self.path_dependency, use_cache=True),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
             asset_params=Depends(self.assets_dependency),
             dataset_params=Depends(self.dataset_dependency),
@@ -1258,7 +1258,7 @@ class AsyncMultiBaseTilerFactory(AsyncTilerFactory):
             operation_id=f"{self.operation_prefix}getStatistics",
         )
         async def statistics(
-            dataset=Depends(self.path_dependency, use_cache=True),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
             layer_params=Depends(self.layer_dependency),
             dataset_params=Depends(self.dataset_dependency),
@@ -1305,7 +1305,7 @@ class AsyncMultiBaseTilerFactory(AsyncTilerFactory):
                 FeatureCollection | Feature,
                 Body(description="GeoJSON Feature or FeatureCollection."),
             ],
-            dataset=Depends(self.path_dependency, use_cache=True),
+            dataset=Depends(self.path_dependency),
             reader_params=Depends(self.reader_dependency),
             layer_params=Depends(self.layer_dependency),
             dataset_params=Depends(self.dataset_dependency),

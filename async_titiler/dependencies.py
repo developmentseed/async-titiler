@@ -9,6 +9,7 @@ import httpx2 as httpx
 import pystac
 import zarr
 from async_geotiff import GeoTIFF
+from cache import AsyncTTL
 from fastapi import Query
 from pydantic import AfterValidator
 from rio_tiler.types import AssetType, AssetWithOptions
@@ -56,6 +57,7 @@ class LayerParams(ExpressionParams, VariablesParams):
     """variable + expression."""
 
 
+@AsyncTTL(time_to_live=300)
 async def fetch(url: str) -> dict[str, Any]:
     """Fetch STAC items."""
     parsed = urlparse(url)
