@@ -2,7 +2,6 @@
 
 from typing import Annotated, Any, Literal
 
-import httpx
 import jinja2
 import rasterio
 from fastapi import FastAPI, Query
@@ -16,9 +15,6 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.templating import Jinja2Templates
 
-from async_titiler import __version__ as async_titiler_version
-from async_titiler.factory import AsyncTilerFactory
-from async_titiler.settings import ApiSettings
 from titiler.core import __version__ as titiler_version
 from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from titiler.core.factory import AlgorithmFactory, ColorMapFactory, TMSFactory
@@ -27,7 +23,16 @@ from titiler.core.models.OGC import Conformance, Landing
 from titiler.core.resources.enums import MediaType, OptionalHeader
 from titiler.core.utils import accept_media_type, create_html_response, update_openapi
 
-from .dependencies import GeoTIFFPathParams, GeoZARRPathParams, LayerParams
+from . import __version__ as async_titiler_version
+from .dependencies import (
+    GeoTIFFPathParams,
+    GeoZARRPathParams,
+    LayerParams,
+    STACPathParams,
+)
+from .factory import AsyncMultiBaseTilerFactory, AsyncTilerFactory
+from .settings import ApiSettings
+from .stac import AsyncSTACReader
 
 settings = ApiSettings()
 
@@ -121,6 +126,22 @@ app.include_router(
 )
 
 APP_CONFORMS_TO.update(endoints.conforms_to)
+
+###############################################################################
+# STAC Endpoints
+endoints = AsyncMultiBaseTilerFactory(
+    reader=AsyncSTACReader,
+    path_dependency=STACPathParams,
+    add_viewer=True,
+    templates=templates,
+    router_prefix="/stac",
+)
+app.include_router(
+    endoints.router,
+    prefix="/stac",
+    tags=["STAC"],
+)
+
 
 ###############################################################################
 # Tiling Schemes Endpoints
@@ -298,14 +319,7 @@ def conformance(
 @app.get("/healthz", description="Health Check", tags=["Health Check"])
 def ping(request: Request) -> dict:
     """Health check."""
-    try:
-        resp = httpx.get(app.state.stac_url)
-        api_online = True if resp.status_code == 200 else False
-    except:  # noqa
-        api_online = False
-
     data = {
-        "stac-api_online": api_online,
         "versions": {
             "titiler": titiler_version,
             "async-titiler": async_titiler_version,
