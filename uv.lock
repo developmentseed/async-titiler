@@ -119,7 +119,7 @@ server = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "httpx" },
+    { name = "httpx2" },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -135,7 +135,7 @@ requires-dist = [
     { name = "pydantic-settings", specifier = "~=2.0" },
     { name = "rio-tiler", specifier = ">=9.1,<10.0" },
     { name = "starlette-cramjam", specifier = ">=0.4,<0.6" },
-    { name = "titiler-core", specifier = ">=2.0,<2.1" },
+    { name = "titiler-core", specifier = ">=2.0.4,<2.1" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'server'", specifier = ">=0.12.0" },
     { name = "zarr", specifier = "~=3.0" },
 ]
@@ -143,7 +143,7 @@ provides-extras = ["server"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "httpx" },
+    { name = "httpx2" },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -485,7 +485,7 @@ wheels = [
 
 [[package]]
 name = "fastapi"
-version = "0.135.3"
+version = "0.137.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "annotated-doc" },
@@ -494,9 +494,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "typing-inspection" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f7/e6/7adb4c5fa231e82c35b8f5741a9f2d055f520c29af5546fd70d3e8e1cd2e/fastapi-0.135.3.tar.gz", hash = "sha256:bd6d7caf1a2bdd8d676843cdcd2287729572a1ef524fc4d65c17ae002a1be654", size = 396524, upload-time = "2026-04-01T16:23:58.188Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d5/b1/e5b92c59d2c37817e77c1a8c2fc1f79cdcc04c68253e5406b43e3204cba7/fastapi-0.137.1.tar.gz", hash = "sha256:822360704230d9533d8d9475399613525968aa2f0b5bd2a3ccc9f18c88fd541c", size = 408293, upload-time = "2026-06-15T11:28:20.79Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/84/a4/5caa2de7f917a04ada20018eccf60d6cc6145b0199d55ca3711b0fc08312/fastapi-0.135.3-py3-none-any.whl", hash = "sha256:9b0f590c813acd13d0ab43dd8494138eb58e484bfac405db1f3187cfc5810d98", size = 117734, upload-time = "2026-04-01T16:23:59.328Z" },
+    { url = "https://files.pythonhosted.org/packages/da/35/380b9a5922f4340e51c309cde09e5bd32e62f02302971bee30dc15aa0624/fastapi-0.137.1-py3-none-any.whl", hash = "sha256:64f6983c59e45c4b9fdc44e57cb8035c2451ee91ea8e8ec042aca37de7cf6b69", size = 121877, upload-time = "2026-06-15T11:28:19.523Z" },
 ]
 
 [[package]]
@@ -560,19 +560,6 @@ wheels = [
 ]
 
 [[package]]
-name = "httpcore"
-version = "1.0.9"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "certifi" },
-    { name = "h11" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/06/94/82699a10bca87a5556c9c59b5963f2d039dbd239f25bc2a63907a05a14cb/httpcore-1.0.9.tar.gz", hash = "sha256:6e34463af53fd2ab5d807f399a9b45ea31c3dfa2276f15a2c3f00afff6e176e8", size = 85484, upload-time = "2025-04-24T22:06:22.219Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/7e/f5/f66802a942d491edb555dd61e3a9961140fd64c90bce1eafd741609d334d/httpcore-1.0.9-py3-none-any.whl", hash = "sha256:2d400746a40668fc9dec9810239072b40b4484b640a8c38fd654a024c7a1bf55", size = 78784, upload-time = "2025-04-24T22:06:20.566Z" },
-]
-
-[[package]]
 name = "httpcore2"
 version = "2.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -619,21 +606,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/4d/31/14df99e1c43bd132eec921c2e7e11cda7852f65619bc0fc5bdc2d0cb126c/httptools-0.7.1-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:f084813239e1eb403ddacd06a30de3d3e09a9b76e7894dcda2b22f8a726e9c60", size = 452631, upload-time = "2025-10-10T03:54:58.219Z" },
     { url = "https://files.pythonhosted.org/packages/22/d2/b7e131f7be8d854d48cb6d048113c30f9a46dca0c9a8b08fcb3fcd588cdc/httptools-0.7.1-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:7347714368fb2b335e9063bc2b96f2f87a9ceffcd9758ac295f8bbcd3ffbc0ca", size = 452910, upload-time = "2025-10-10T03:54:59.366Z" },
     { url = "https://files.pythonhosted.org/packages/53/cf/878f3b91e4e6e011eff6d1fa9ca39f7eb17d19c9d7971b04873734112f30/httptools-0.7.1-cp314-cp314-win_amd64.whl", hash = "sha256:cfabda2a5bb85aa2a904ce06d974a3f30fb36cc63d7feaddec05d2050acede96", size = 88205, upload-time = "2025-10-10T03:55:00.389Z" },
-]
-
-[[package]]
-name = "httpx"
-version = "0.28.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "anyio" },
-    { name = "certifi" },
-    { name = "httpcore" },
-    { name = "idna" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/b1/df/48c586a5fe32a0f01324ee087459e112ebb7224f646c0b5023f5e79e9956/httpx-0.28.1.tar.gz", hash = "sha256:75e98c5f16b0f35b567856f597f06ff2270a374470a5c2392242528e3e3e42fc", size = 141406, upload-time = "2024-12-06T15:37:23.222Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl", hash = "sha256:d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad", size = 73517, upload-time = "2024-12-06T15:37:21.509Z" },
 ]
 
 [[package]]
@@ -1605,7 +1577,7 @@ wheels = [
 
 [[package]]
 name = "rio-tiler"
-version = "9.1.0"
+version = "9.2.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
@@ -1621,9 +1593,9 @@ dependencies = [
     { name = "rasterio", version = "1.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "typing-extensions", marker = "python_full_version < '3.15'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b7/28/ebe36fd64d62fd4c8f0f0933ac2a76155a8faa97aa780f2618d3946fc2a6/rio_tiler-9.1.0.tar.gz", hash = "sha256:94bd3feae1de42f8898b7f9f763baa5e6245176ba92940a0b8e904488f843485", size = 211281, upload-time = "2026-06-01T11:30:28.733Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1a/4f/9347131e67d1a7cff320f69b3b495c38de1a865f9747549b133176f8721b/rio_tiler-9.2.1.tar.gz", hash = "sha256:daf3c8d91dc417be2660ca23c0e65d8a7ef1f49512699e726f1adda880c40945", size = 211487, upload-time = "2026-06-12T08:59:57.519Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/17/36/531330042b0f3a86c1766822407737c50048457b198f3b7ae20145fd4138/rio_tiler-9.1.0-py3-none-any.whl", hash = "sha256:abe57cdae818b67c81fe6a15f2928df5630bdda912ccb3cefabb0fc1cf460141", size = 314987, upload-time = "2026-06-01T11:30:27.113Z" },
+    { url = "https://files.pythonhosted.org/packages/4c/87/fc4972e36213642ca89ecd3431e3916510f5c2a3848cfb42dd97715f2912/rio_tiler-9.2.1-py3-none-any.whl", hash = "sha256:eeaa6bd1a6e6f092eab810524e5f2fae360538349a88d1a1350e2dd38e413063", size = 315383, upload-time = "2026-06-12T08:59:55.86Z" },
 ]
 
 [[package]]
@@ -1711,7 +1683,7 @@ wheels = [
 
 [[package]]
 name = "titiler-core"
-version = "2.0.1"
+version = "2.0.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "fastapi" },
@@ -1725,9 +1697,9 @@ dependencies = [
     { name = "rio-tiler" },
     { name = "simplejson" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/62/9b/ae47d292f8a7a21cef9716fa5e33fcba4048e26aa11abfe9228bb2c97c9e/titiler_core-2.0.1.tar.gz", hash = "sha256:590343a8da15f56950870d1ebb637924280530de3640877ebc46ab507e04a930", size = 69016, upload-time = "2026-03-31T13:45:15.064Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a6/d2/c04baca3dc9d7a30a24709bcb22f628914a17f014aaecd9edea195dd734b/titiler_core-2.0.4.tar.gz", hash = "sha256:704d8801affc5f70a24fb19b9c378489b3e8d7b3efd77ecf6544a04ee882a0e9", size = 69465, upload-time = "2026-06-04T09:02:18.608Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ba/32/68b4c9f81e8b1cf0dc57d03a4159d0118decda94af41fdf5a98a2b2ced25/titiler_core-2.0.1-py3-none-any.whl", hash = "sha256:f435cf653a3f9acaeaeb60d1e8cda1474ccd79d4364c9e1e8da91dd08c96a449", size = 87427, upload-time = "2026-03-31T13:45:08.265Z" },
+    { url = "https://files.pythonhosted.org/packages/da/20/73feabf709a9cbc85ce3000f8fa56efc7944137f372019950f48cacf1d33/titiler_core-2.0.4-py3-none-any.whl", hash = "sha256:a642c64d07473954fdb4c39d3dd0a16bb23170f7fa78de2da0571d5ee68ab13c", size = 87879, upload-time = "2026-06-04T09:02:12.465Z" },
 ]
 
 [[package]]

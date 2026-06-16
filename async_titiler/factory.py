@@ -3,17 +3,19 @@
 import logging
 import os
 from collections.abc import Callable
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, TypeAlias
 from urllib.parse import urlencode
 
 import jinja2
 from attrs import define
 from fastapi import Body, Depends, Path, Query
 from geojson_pydantic.features import Feature, FeatureCollection
+from geojson_pydantic.geometries import MultiPolygon, Polygon
 from pydantic import Field
 from rio_tiler.constants import WGS84_CRS
-from rio_tiler.io import AsyncBaseReader
-from rio_tiler.models import Info
+from rio_tiler.experimental.zarr import GeoZarrInfo
+from rio_tiler.io import AsyncBaseReader, AsyncMultiBaseReader
+from rio_tiler.models import Info as BaseInfo
 from rio_tiler.utils import CRS_to_uri
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, Response
@@ -22,6 +24,7 @@ from starlette.templating import Jinja2Templates
 
 from titiler.core.dependencies import (
     CoordCRSParams,
+    CoverScaleParams,
     CRSParams,
     DefaultDependency,
     DstCRSParams,
@@ -31,7 +34,8 @@ from titiler.core.factory import TilerFactory, img_endpoint_params
 from titiler.core.models.mapbox import TileJSON
 from titiler.core.models.OGC import TileSet, TileSetList
 from titiler.core.models.responses import (
-    InfoGeoJSON,
+    MultiBaseStatistics,
+    MultiBaseStatisticsGeoJSON,
     Point,
     Statistics,
     StatisticsGeoJSON,
@@ -45,6 +49,8 @@ from titiler.core.utils import (
     tms_limits,
 )
 
+from .dependencies import AssetsExprParams, AssetsParams
+
 jinja2_env = jinja2.Environment(
     autoescape=jinja2.select_autoescape(["html"]),
     loader=jinja2.ChoiceLoader([jinja2.PackageLoader(__package__, "templates")]),
@@ -53,6 +59,11 @@ DEFAULT_TEMPLATES = Jinja2Templates(env=jinja2_env)
 
 
 logger = logging.getLogger(__name__)
+
+Info: TypeAlias = BaseInfo | GeoZarrInfo
+MultiBaseInfo: TypeAlias = dict[str, Info]
+InfoGeoJSON = Feature[Polygon | MultiPolygon, Info]
+MultiBaseInfoGeoJSON = Feature[Polygon | MultiPolygon, MultiBaseInfo]
 
 
 @define(kw_only=True)
@@ -83,7 +94,7 @@ class AsyncTilerFactory(TilerFactory):
             operation_id=f"{self.operation_prefix}getInfo",
         )
         async def info(
-            dataset=Depends(self.path_dependency),
+            dataset=Depends(self.path_dependency, use_cache=True),
             reader_params=Depends(self.reader_dependency),
         ):
             """Return dataset's basic info."""
@@ -104,7 +115,7 @@ class AsyncTilerFactory(TilerFactory):
             operation_id=f"{self.operation_prefix}getInfoGeoJSON",
         )
         async def info_geojson(
-            dataset=Depends(self.path_dependency),
+            dataset=Depends(self.path_dependency, use_cache=True),
             reader_params=Depends(self.reader_dependency),
             crs=Depends(CRSParams),
         ):
@@ -142,7 +153,7 @@ class AsyncTilerFactory(TilerFactory):
             operation_id=f"{self.operation_prefix}getStatistics",
         )
         async def statistics(
-            dataset=Depends(self.path_dependency),
+            dataset=Depends(self.path_dependency, use_cache=True),
             reader_params=Depends(self.reader_dependency),
             layer_params=Depends(self.layer_dependency),
             dataset_params=Depends(self.dataset_dependency),
@@ -186,7 +197,7 @@ class AsyncTilerFactory(TilerFactory):
                 FeatureCollection | Feature,
                 Body(description="GeoJSON Feature or FeatureCollection."),
             ],
-            dataset=Depends(self.path_dependency),
+            dataset=Depends(self.path_dependency, use_cache=True),
             reader_params=Depends(self.reader_dependency),
             coord_crs=Depends(CoordCRSParams),
             dst_crs=Depends(DstCRSParams),
@@ -194,6 +205,7 @@ class AsyncTilerFactory(TilerFactory):
             dataset_params=Depends(self.dataset_dependency),
             image_params=Depends(self.img_part_dependency),
             post_process=Depends(self.process_dependency),
+            cover_scale=Depends(CoverScaleParams),
             stats_params=Depends(self.stats_dependency),
             histogram_params=Depends(self.histogram_dependency),
         ):
@@ -219,6 +231,7 @@ class AsyncTilerFactory(TilerFactory):
                     coverage_array = image.get_coverage_array(
                         shape,
                         shape_crs=coord_crs or WGS84_CRS,
+                        cover_scale=cover_scale,
                     )
 
                     if post_process:
@@ -261,7 +274,7 @@ class AsyncTilerFactory(TilerFactory):
         )
         async def tileset_list(
             request: Request,
-            dataset=Depends(self.path_dependency),
+            dataset=Depends(self.path_dependency, use_cache=True),
             reader_params=Depends(self.reader_dependency),
             crs=Depends(CRSParams),
             f: Annotated[
@@ -386,9 +399,16 @@ class AsyncTilerFactory(TilerFactory):
                     description="Identifier selecting one of the TileMatrixSetId supported."
                 ),
             ],
-            dataset=Depends(self.path_dependency),
+            dataset=Depends(self.path_dependency, use_cache=True),
             reader_params=Depends(self.reader_dependency),
-            env=Depends(self.environment_dependency),
+            minzoom: Annotated[
+                int | None,
+                Query(description="Overwrite default minzoom."),
+            ] = None,
+            maxzoom: Annotated[
+                int | None,
+                Query(description="Overwrite default maxzoom."),
+            ] = None,
             f: Annotated[
                 Literal["html", "json"] | None,
                 Query(
@@ -399,10 +419,9 @@ class AsyncTilerFactory(TilerFactory):
             """Retrieve the raster tileset metadata for the specified dataset and tiling scheme (tile matrix set)."""
             tms = self.supported_tms.get(tileMatrixSetId)
             src_dst = self.reader(dataset, tms=tms, **reader_params.as_dict())
-
             bounds = src_dst.get_geographic_bounds(tms.rasterio_geographic_crs)
-            minzoom = src_dst.minzoom
-            maxzoom = src_dst.maxzoom
+            minzoom = minzoom if minzoom is not None else src_dst.minzoom
+            maxzoom = maxzoom if maxzoom is not None else src_dst.maxzoom
 
             collection_bbox = {
                 "lowerLeft": [bounds[0], bounds[1]],
@@ -519,7 +538,7 @@ class AsyncTilerFactory(TilerFactory):
             response_class=HTMLResponse,
             operation_id=f"{self.operation_prefix}getMapViewer",
         )
-        async def map_viewer(
+        def map_viewer(
             request: Request,
             tileMatrixSetId: Annotated[
                 Literal[tuple(self.supported_tms.list())],
@@ -545,7 +564,7 @@ class AsyncTilerFactory(TilerFactory):
                 int | None,
                 Query(description="Overwrite default maxzoom."),
             ] = None,
-            src_path=Depends(self.path_dependency),
+            dataset=Depends(self.path_dependency, use_cache=True),
             reader_params=Depends(self.reader_dependency),
             tile_params=Depends(self.tile_dependency),
             layer_params=Depends(self.layer_dependency),
@@ -649,7 +668,7 @@ class AsyncTilerFactory(TilerFactory):
                 int | None,
                 Query(gt=0, description="Tilesize in pixels."),
             ] = None,
-            dataset=Depends(self.path_dependency),
+            dataset=Depends(self.path_dependency, use_cache=True),
             reader_params=Depends(self.reader_dependency),
             tile_params=Depends(self.tile_dependency),
             layer_params=Depends(self.layer_dependency),
@@ -694,8 +713,6 @@ class AsyncTilerFactory(TilerFactory):
     def tilejson(self):  # noqa: C901
         """Register /tilejson.json endpoint."""
 
-        available_tms = tuple(self.supported_tms.list())
-
         @self.router.get(
             "/{tileMatrixSetId}/tilejson.json",
             response_model=TileJSON,
@@ -706,7 +723,7 @@ class AsyncTilerFactory(TilerFactory):
         async def tilejson(
             request: Request,
             tileMatrixSetId: Annotated[
-                Literal[available_tms],
+                Literal[tuple(self.supported_tms.list())],
                 Path(
                     description="Identifier selecting one of the TileMatrixSetId supported."
                 ),
@@ -729,7 +746,7 @@ class AsyncTilerFactory(TilerFactory):
                 int | None,
                 Query(description="Overwrite default maxzoom."),
             ] = None,
-            src_path=Depends(self.path_dependency),
+            dataset=Depends(self.path_dependency, use_cache=True),
             reader_params=Depends(self.reader_dependency),
             tile_params=Depends(self.tile_dependency),
             layer_params=Depends(self.layer_dependency),
@@ -765,7 +782,7 @@ class AsyncTilerFactory(TilerFactory):
             tiles_url += f"?{urlencode(qs)}"
 
             tms = self.supported_tms.get(tileMatrixSetId)
-            src_dst = self.reader(src_path, tms=tms, **reader_params.as_dict())
+            src_dst = self.reader(dataset, tms=tms, **reader_params.as_dict())
             return {
                 "bounds": src_dst.get_geographic_bounds(tms.rasterio_geographic_crs),
                 "minzoom": minzoom if minzoom is not None else src_dst.minzoom,
@@ -790,7 +807,7 @@ class AsyncTilerFactory(TilerFactory):
         async def point(
             lon: Annotated[float, Path(description="Longitude")],
             lat: Annotated[float, Path(description="Latitude")],
-            dataset=Depends(self.path_dependency),
+            dataset=Depends(self.path_dependency, use_cache=True),
             reader_params=Depends(self.reader_dependency),
             coord_crs=Depends(CoordCRSParams),
             layer_params=Depends(self.layer_dependency),
@@ -841,7 +858,7 @@ class AsyncTilerFactory(TilerFactory):
                     description="Default will be automatically defined if the output image needs a mask (png) or not (jpeg)."
                 ),
             ] = None,
-            dataset=Depends(self.path_dependency),
+            dataset=Depends(self.path_dependency, use_cache=True),
             reader_params=Depends(self.reader_dependency),
             layer_params=Depends(self.layer_dependency),
             dataset_params=Depends(self.dataset_dependency),
@@ -850,7 +867,6 @@ class AsyncTilerFactory(TilerFactory):
             post_process=Depends(self.process_dependency),
             colormap=Depends(self.colormap_dependency),
             render_params=Depends(self.render_dependency),
-            env=Depends(self.environment_dependency),
         ):
             """Create preview of a dataset."""
             src_dst = self.reader(dataset, **reader_params.as_dict())
@@ -908,7 +924,7 @@ class AsyncTilerFactory(TilerFactory):
                     description="Default will be automatically defined if the output image needs a mask (png) or not (jpeg).",
                 ),
             ],
-            dataset=Depends(self.path_dependency),
+            dataset=Depends(self.path_dependency, use_cache=True),
             reader_params=Depends(self.reader_dependency),
             layer_params=Depends(self.layer_dependency),
             dataset_params=Depends(self.dataset_dependency),
@@ -918,7 +934,6 @@ class AsyncTilerFactory(TilerFactory):
             post_process=Depends(self.process_dependency),
             colormap=Depends(self.colormap_dependency),
             render_params=Depends(self.render_dependency),
-            env=Depends(self.environment_dependency),
         ):
             """Create image from a bbox."""
             src_dst = self.reader(dataset, **reader_params.as_dict())
@@ -974,7 +989,7 @@ class AsyncTilerFactory(TilerFactory):
                     description="Default will be automatically defined if the output image needs a mask (png) or not (jpeg)."
                 ),
             ] = None,
-            dataset=Depends(self.path_dependency),
+            dataset=Depends(self.path_dependency, use_cache=True),
             reader_params=Depends(self.reader_dependency),
             layer_params=Depends(self.layer_dependency),
             dataset_params=Depends(self.dataset_dependency),
@@ -984,7 +999,6 @@ class AsyncTilerFactory(TilerFactory):
             post_process=Depends(self.process_dependency),
             colormap=Depends(self.colormap_dependency),
             render_params=Depends(self.render_dependency),
-            env=Depends(self.environment_dependency),
         ):
             """Create image from a geojson feature."""
             src_dst = self.reader(dataset, **reader_params.as_dict())
@@ -1046,7 +1060,7 @@ class AsyncTilerFactory(TilerFactory):
             **img_endpoint_params,
         )
         async def get_map(
-            dataset=Depends(self.path_dependency),
+            dataset=Depends(self.path_dependency, use_cache=True),
             ogc_params=Depends(OGCMapsParams),
             reader_params=Depends(self.reader_dependency),
             layer_params=Depends(self.layer_dependency),
@@ -1054,7 +1068,6 @@ class AsyncTilerFactory(TilerFactory):
             post_process=Depends(self.process_dependency),
             colormap=Depends(self.colormap_dependency),
             render_params=Depends(self.render_dependency),
-            env=Depends(self.environment_dependency),
         ) -> Response:
             """OGC Maps API."""
             src_dst = self.reader(dataset, **reader_params.as_dict())
@@ -1099,3 +1112,251 @@ class AsyncTilerFactory(TilerFactory):
                 headers["Content-Crs"] = f"<{uri}>"
 
             return Response(content, media_type=media_type, headers=headers)
+
+
+@define(kw_only=True)
+class AsyncMultiBaseTilerFactory(AsyncTilerFactory):
+    """Custom Tiler Factory for MultiBaseReader classes."""
+
+    reader: type[AsyncMultiBaseReader]  # type: ignore
+
+    # Assets/Expression dependency
+    layer_dependency: type[DefaultDependency] = AssetsExprParams
+
+    # Assets dependency
+    assets_dependency: type[DefaultDependency] = AssetsParams
+
+    # Overwrite the `/info` endpoint to return the list of assets when no assets is passed.
+    def info(self):
+        """Register /info endpoint."""
+
+        @self.router.get(
+            "/info",
+            response_model=MultiBaseInfo,
+            response_model_exclude_none=True,
+            response_class=JSONResponse,
+            responses={
+                200: {
+                    "description": "Return dataset's basic info or the list of available assets."
+                }
+            },
+            operation_id=f"{self.operation_prefix}getInfo",
+        )
+        async def info(
+            dataset=Depends(self.path_dependency, use_cache=True),
+            reader_params=Depends(self.reader_dependency),
+            asset_params=Depends(self.assets_dependency),
+        ) -> MultiBaseInfo:
+            """Return dataset's basic info or the list of available assets."""
+            src_dst = self.reader(dataset, **reader_params.as_dict())
+            if asset_params.assets == [":all:"]:
+                asset_params.assets = src_dst.assets
+
+            return await src_dst.info(**asset_params.as_dict())
+
+        @self.router.get(
+            "/info.geojson",
+            response_model=MultiBaseInfoGeoJSON,
+            response_model_exclude_none=True,
+            response_class=GeoJSONResponse,
+            responses={
+                200: {
+                    "content": {"application/geo+json": {}},
+                    "description": "Return dataset's basic info as a GeoJSON feature.",
+                }
+            },
+            operation_id=f"{self.operation_prefix}getInfoGeoJSON",
+        )
+        async def info_geojson(
+            dataset=Depends(self.path_dependency, use_cache=True),
+            reader_params=Depends(self.reader_dependency),
+            asset_params=Depends(self.assets_dependency),
+            crs=Depends(CRSParams),
+        ):
+            """Return dataset's basic info as a GeoJSON feature."""
+            src_dst = self.reader(dataset, **reader_params.as_dict())
+            if asset_params.assets == [":all:"]:
+                asset_params.assets = src_dst.assets
+
+                bounds = src_dst.get_geographic_bounds(crs or WGS84_CRS)
+                geometry = bounds_to_geometry(bounds)
+
+                return Feature(
+                    type="Feature",
+                    bbox=bounds,
+                    geometry=geometry,
+                    properties=src_dst.info(**asset_params.as_dict()),
+                )
+
+        @self.router.get(
+            "/assets",
+            response_model=list[str],
+            responses={200: {"description": "Return a list of supported assets."}},
+            operation_id=f"{self.operation_prefix}getAssets",
+        )
+        async def available_assets(
+            dataset=Depends(self.path_dependency, use_cache=True),
+            reader_params=Depends(self.reader_dependency),
+        ):
+            """Return a list of supported assets."""
+            src_dst = self.reader(dataset, **reader_params.as_dict())
+            return src_dst.assets
+
+    # Overwrite the `/statistics` endpoint because the MultiBaseReader output model is different (Dict[str, Dict[str, BandStatistics]])
+    # and MultiBaseReader.statistics() method also has `assets` arguments to defaults to the list of assets.
+    def statistics(self):  # noqa: C901
+        """Register /statistics endpoint."""
+
+        # GET endpoint
+        @self.router.get(
+            "/asset_statistics",
+            response_class=JSONResponse,
+            response_model=MultiBaseStatistics,
+            responses={
+                200: {
+                    "content": {"application/json": {}},
+                    "description": "Return dataset's statistics.",
+                }
+            },
+            operation_id=f"{self.operation_prefix}getAssetsStatistics",
+        )
+        async def asset_statistics(
+            dataset=Depends(self.path_dependency, use_cache=True),
+            reader_params=Depends(self.reader_dependency),
+            asset_params=Depends(self.assets_dependency),
+            dataset_params=Depends(self.dataset_dependency),
+            image_params=Depends(self.img_preview_dependency),
+            stats_params=Depends(self.stats_dependency),
+            histogram_params=Depends(self.histogram_dependency),
+        ):
+            """Per Asset statistics"""
+            src_dst = self.reader(dataset, **reader_params.as_dict())
+            if asset_params.assets == [":all:"]:
+                asset_params.assets = src_dst.assets
+
+            return await src_dst.statistics(
+                **asset_params.as_dict(),
+                **image_params.as_dict(exclude_none=False),
+                **dataset_params.as_dict(),
+                **stats_params.as_dict(),
+                hist_options=histogram_params.as_dict(),
+            )
+
+        # MultiBaseReader merged statistics
+        # https://github.com/cogeotiff/rio-tiler/blob/main/rio_tiler/io/base.py#L455-L468
+        # GET endpoint
+        @self.router.get(
+            "/statistics",
+            response_class=JSONResponse,
+            response_model=Statistics,
+            responses={
+                200: {
+                    "content": {"application/json": {}},
+                    "description": "Return dataset's statistics.",
+                }
+            },
+            operation_id=f"{self.operation_prefix}getStatistics",
+        )
+        async def statistics(
+            dataset=Depends(self.path_dependency, use_cache=True),
+            reader_params=Depends(self.reader_dependency),
+            layer_params=Depends(self.layer_dependency),
+            dataset_params=Depends(self.dataset_dependency),
+            image_params=Depends(self.img_preview_dependency),
+            post_process=Depends(self.process_dependency),
+            stats_params=Depends(self.stats_dependency),
+            histogram_params=Depends(self.histogram_dependency),
+        ):
+            """Merged assets statistics."""
+            src_dst = self.reader(dataset, **reader_params.as_dict())
+            if layer_params.assets == [":all:"]:
+                layer_params.assets = src_dst.assets
+
+            image = await src_dst.preview(
+                **layer_params.as_dict(),
+                **image_params.as_dict(),
+                **dataset_params.as_dict(),
+            )
+
+            if post_process:
+                image = post_process(image)
+
+            return image.statistics(
+                **stats_params.as_dict(),
+                hist_options=histogram_params.as_dict(),
+            )
+
+        # POST endpoint
+        @self.router.post(
+            "/statistics",
+            response_model=MultiBaseStatisticsGeoJSON,
+            response_model_exclude_none=True,
+            response_class=GeoJSONResponse,
+            responses={
+                200: {
+                    "content": {"application/geo+json": {}},
+                    "description": "Return dataset's statistics from feature or featureCollection.",
+                }
+            },
+            operation_id=f"{self.operation_prefix}postStatisticsForGeoJSON",
+        )
+        async def geojson_statistics(
+            geojson: Annotated[
+                FeatureCollection | Feature,
+                Body(description="GeoJSON Feature or FeatureCollection."),
+            ],
+            dataset=Depends(self.path_dependency, use_cache=True),
+            reader_params=Depends(self.reader_dependency),
+            layer_params=Depends(self.layer_dependency),
+            dataset_params=Depends(self.dataset_dependency),
+            coord_crs=Depends(CoordCRSParams),
+            dst_crs=Depends(DstCRSParams),
+            post_process=Depends(self.process_dependency),
+            image_params=Depends(self.img_part_dependency),
+            cover_scale=Depends(CoverScaleParams),
+            stats_params=Depends(self.stats_dependency),
+            histogram_params=Depends(self.histogram_dependency),
+        ):
+            """Get Statistics from a geojson feature or featureCollection."""
+            fc = geojson
+            if isinstance(fc, Feature):
+                fc = FeatureCollection(type="FeatureCollection", features=[geojson])
+
+            src_dst = self.reader(dataset, **reader_params.as_dict())
+            if layer_params.assets == [":all:"]:
+                layer_params.assets = src_dst.assets
+
+            for feature in fc.features:
+                shape = feature.model_dump(exclude_none=True)
+                image = await src_dst.feature(
+                    shape,
+                    shape_crs=coord_crs or WGS84_CRS,
+                    dst_crs=dst_crs,
+                    align_bounds_with_dataset=True,
+                    **layer_params.as_dict(),
+                    **image_params.as_dict(),
+                    **dataset_params.as_dict(),
+                )
+
+                # Get the coverage % array
+                coverage_array = image.get_coverage_array(
+                    shape,
+                    shape_crs=coord_crs or WGS84_CRS,
+                    cover_scale=cover_scale,
+                )
+
+                if post_process:
+                    image = post_process(image)
+
+                stats = image.statistics(
+                    **stats_params.as_dict(),
+                    hist_options=histogram_params.as_dict(),
+                    coverage=coverage_array,
+                )
+
+                feature.properties = feature.properties or {}
+                # NOTE: because we use `src_dst.feature` the statistics will be in form of
+                # `Dict[str, BandStatistics]` and not `Dict[str, Dict[str, BandStatistics]]`
+                feature.properties.update({"statistics": stats})
+
+            return fc.features[0] if isinstance(geojson, Feature) else fc
