@@ -8,8 +8,6 @@ from fastapi import FastAPI, Query
 from fastapi import __version__ as fastapi_version
 from pydantic import __version__ as pydantic_version
 from rio_tiler import __version__ as rio_tiler_version
-from rio_tiler.experimental.geotiff import Reader as AsyncGeoTiFFReader
-from rio_tiler.experimental.zarr import GeoZarrReader as AsyncGeoZarrReader
 from starlette import __version__ as starlette_version
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
@@ -22,17 +20,15 @@ from titiler.core.middleware import CacheControlMiddleware, LoggerMiddleware
 from titiler.core.models.OGC import Conformance, Landing
 from titiler.core.resources.enums import MediaType, OptionalHeader
 from titiler.core.utils import accept_media_type, create_html_response, update_openapi
+from titiler.mosaic.errors import MOSAIC_STATUS_CODES
 
-from . import __version__ as async_titiler_version
-from .dependencies import (
-    GeoTIFFPathParams,
-    GeoZARRPathParams,
-    LayerParams,
-)
-from .factories import AsyncTilerFactory
-from .settings import ApiSettings
+from .. import __version__ as async_titiler_version
+from ..settings import ApiSettings
+from .factories import AsyncMosaicTilerFactory, AsyncMultiBaseTilerFactory
+from .settings import STACAPISettings
 
 settings = ApiSettings()
+stac_settings = STACAPISettings()
 
 # custom template directory
 templates_location: list[Any] = (
@@ -41,7 +37,7 @@ templates_location: list[Any] = (
     else []
 )
 # default template directory
-templates_location.append(jinja2.PackageLoader(__package__, "templates"))
+templates_location.append(jinja2.PackageLoader("async_titiler", "templates"))
 templates_location.append(jinja2.PackageLoader("titiler.core", "templates"))
 
 jinja2_env = jinja2.Environment(
@@ -50,7 +46,6 @@ jinja2_env = jinja2.Environment(
 )
 templates = Jinja2Templates(env=jinja2_env)
 
-
 app = FastAPI(
     title=settings.name,
     openapi_url="/api",
@@ -58,10 +53,15 @@ app = FastAPI(
     version=async_titiler_version,
     root_path=settings.root_path,
 )
+
+app.state.stac_url = stac_settings.url
+
 # Fix OpenAPI response header for OGC Common compatibility
 update_openapi(app)
 
 add_exception_handlers(app, DEFAULT_STATUS_CODES)
+add_exception_handlers(app, MOSAIC_STATUS_CODES)
+
 
 # Set all CORS enabled origins
 if settings.cors_origins:
@@ -89,43 +89,38 @@ APP_CONFORMS_TO = {
     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/json",
 }
 
-###############################################################################
-# Async-GeoTIFF Endpoints
-endoints = AsyncTilerFactory(
-    reader=AsyncGeoTiFFReader,
-    path_dependency=GeoTIFFPathParams,
-    add_viewer=True,
-    templates=templates,
-    router_prefix="/geotiff",
-    name="geotiff",
-)
-app.include_router(
-    endoints.router,
-    prefix="/geotiff",
-    tags=["GeoTIFF"],
-)
-
-APP_CONFORMS_TO.update(endoints.conforms_to)
-
 
 ###############################################################################
-# GeoZARR Endpoints
-endoints = AsyncTilerFactory(
-    reader=AsyncGeoZarrReader,
-    path_dependency=GeoZARRPathParams,
-    layer_dependency=LayerParams,
+# STAC ITEM
+item = AsyncMultiBaseTilerFactory(
     add_viewer=True,
     templates=templates,
-    router_prefix="/geozarr",
-    name="geozarr",
+    name="stac-item",
 )
 app.include_router(
-    endoints.router,
-    prefix="/geozarr",
-    tags=["GeoZARR"],
+    item.router,
+    prefix="/collections/{collection_id}/items/{item_id}",
+    tags=["STAC Item"],
 )
+APP_CONFORMS_TO.update(item.conforms_to)
 
-APP_CONFORMS_TO.update(endoints.conforms_to)
+###############################################################################
+# STAC COLLECTION
+# Notes:
+# - The `path_dependency` is set to `STACCollectionSearchParams` which define `{collection_id}`
+# `Path` dependency and other Query parameters used to construct STAC API Search request.
+collection = AsyncMosaicTilerFactory(
+    add_viewer=True,
+    templates=templates,
+    optional_headers=optional_headers,
+    name="stac-collection",
+)
+app.include_router(
+    collection.router,
+    tags=["STAC Collection"],
+    prefix="/collections/{collection_id}",
+)
+APP_CONFORMS_TO.update(collection.conforms_to)
 
 ###############################################################################
 # Tiling Schemes Endpoints

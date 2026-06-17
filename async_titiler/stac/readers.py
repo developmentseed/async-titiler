@@ -1,22 +1,17 @@
 """Async-Titiler STAC Reader."""
 
-import posixpath
 from contextlib import asynccontextmanager
 from typing import Any
-from urllib.parse import urlparse
 
 import attr
 import pystac
-import zarr
-from async_geotiff import GeoTIFF
 from rio_tiler.experimental import async_stac
 from rio_tiler.experimental.geotiff import Reader as AsyncGeoTiFFReader
 from rio_tiler.experimental.zarr import GeoZarrReader as AsyncGeoZarrReader
 from rio_tiler.io import AsyncBaseReader
 from rio_tiler.types import AssetInfo, AssetWithOptions
-from zarr.storage import ObjectStore
 
-from ._obstore import _get_store
+from ..io import _get_geotiff, _get_geozarr
 
 _VALID_TYPE = {
     "image/tiff; application=geotiff",
@@ -48,9 +43,7 @@ _VALID_TYPE = {
 @asynccontextmanager
 async def TIFFReader(url: str, **kwargs: Any) -> AsyncGeoTiFFReader:  # type: ignore
     """Async context manager for STACReader."""
-    store = await _get_store(url)
-    parsed = urlparse(url)
-    geotiff_ds = await GeoTIFF.open(posixpath.basename(parsed.path), store=store)
+    geotiff_ds = await _get_geotiff(url)
     async with AsyncGeoTiFFReader(input=geotiff_ds, **kwargs) as src:
         yield src
 
@@ -58,12 +51,7 @@ async def TIFFReader(url: str, **kwargs: Any) -> AsyncGeoTiFFReader:  # type: ig
 @asynccontextmanager
 async def ZARRReader(url: str, **kwargs: Any) -> AsyncGeoZarrReader:  # type: ignore
     """Async context manager for STACReader."""
-    if not url.endswith("/"):
-        url += "/"
-
-    store = await _get_store(url)
-    zarr_store = ObjectStore(store=store, read_only=True)
-    zarr_ds = await zarr.api.asynchronous.open_group(store=zarr_store, mode="r")
+    zarr_ds = await _get_geozarr(url)
     async with AsyncGeoZarrReader(input=zarr_ds, **kwargs) as src:
         yield src
 
