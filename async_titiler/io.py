@@ -10,8 +10,17 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
 import httpx2 as httpx
+import zarr
+from async_geotiff import GeoTIFF
 from cache import AsyncTTL
 from obstore.store import from_url
+from zarr.storage import ObjectStore
+
+try:
+    from obstore.auth.boto3 import Boto3CredentialProvider
+
+except ImportError:
+    Boto3CredentialProvider = None
 
 if TYPE_CHECKING:
     from obstore.store import Store
@@ -42,7 +51,7 @@ async def _get_store(url: str) -> Store:
         region_name_env = (
             os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION")) or None
         )
-
+        aws_profile = os.environ.get("AWS_PROFILE")
         # s3:// urls
         if parsed.scheme == "s3":
             config["region"] = (
@@ -57,6 +66,20 @@ async def _get_store(url: str) -> Store:
                 config["endpoint"] = (
                     "https://" + endpoint_url if use_https else "http://" + endpoint_url
                 )
+
+            if aws_profile and Boto3CredentialProvider:
+                # Use Boto3CredentialProvider for AWS profile support
+                from obstore.store import S3Store
+
+                store = S3Store(
+                    parsed.netloc,
+                    prefix=posixpath.dirname(parsed.path),
+                    credential_provider=Boto3CredentialProvider(),
+                    config=config,
+                    client_options=client_options,
+                    virtual_hosted_style_request=False,
+                )
+                return store
 
         # https://{bucket}.s3.{region}?.amazonaws.com urls
         else:
@@ -85,3 +108,21 @@ async def _get_store(url: str) -> Store:
         config=config,
         client_options=client_options,
     )
+
+
+@AsyncTTL(time_to_live=300)
+async def _get_geotiff(url: str) -> GeoTIFF:
+    """Create GeoTIFF dataset from url"""
+    store = await _get_store(url)
+    parsed = urlparse(url)
+    return await GeoTIFF.open(parsed.path.split("/")[-1], store=store)
+
+
+@AsyncTTL(time_to_live=300)
+async def _get_geozarr(url: str) -> zarr.AsyncGroup:
+    """Create GeoZarr dataset from url"""
+    if not url.endswith("/"):
+        url += "/"
+    store = await _get_store(url)
+    zarr_store = ObjectStore(store=store, read_only=True)
+    return await zarr.api.asynchronous.open_group(store=zarr_store, mode="r")

@@ -15,7 +15,7 @@ class ApiSettings(BaseSettings):
     template_directory: str | None = None
 
     model_config = {
-        "env_prefix": "TITILER_ASYNC_API_",
+        "env_prefix": "ATITILER_API_",
         "env_file": ".env",
         "extra": "ignore",
     }

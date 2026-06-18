@@ -6,7 +6,6 @@ from collections.abc import Callable
 from typing import Annotated, Any, Literal, TypeAlias
 from urllib.parse import urlencode
 
-import jinja2
 from attrs import define
 from fastapi import Body, Depends, Path, Query
 from geojson_pydantic.features import Feature, FeatureCollection
@@ -14,13 +13,12 @@ from geojson_pydantic.geometries import MultiPolygon, Polygon
 from pydantic import Field
 from rio_tiler.constants import WGS84_CRS
 from rio_tiler.experimental.zarr import GeoZarrInfo
-from rio_tiler.io import AsyncBaseReader, AsyncMultiBaseReader
+from rio_tiler.io import AsyncBaseReader
 from rio_tiler.models import Info as BaseInfo
 from rio_tiler.utils import CRS_to_uri
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, Response
 from starlette.routing import NoMatchFound
-from starlette.templating import Jinja2Templates
 
 from titiler.core.dependencies import (
     CoordCRSParams,
@@ -34,8 +32,6 @@ from titiler.core.factory import TilerFactory, img_endpoint_params
 from titiler.core.models.mapbox import TileJSON
 from titiler.core.models.OGC import TileSet, TileSetList
 from titiler.core.models.responses import (
-    MultiBaseStatistics,
-    MultiBaseStatisticsGeoJSON,
     Point,
     Statistics,
     StatisticsGeoJSON,
@@ -49,21 +45,10 @@ from titiler.core.utils import (
     tms_limits,
 )
 
-from .dependencies import AssetsExprParams, AssetsParams
-
-jinja2_env = jinja2.Environment(
-    autoescape=jinja2.select_autoescape(["html"]),
-    loader=jinja2.ChoiceLoader([jinja2.PackageLoader(__package__, "templates")]),
-)
-DEFAULT_TEMPLATES = Jinja2Templates(env=jinja2_env)
-
-
 logger = logging.getLogger(__name__)
 
 Info: TypeAlias = BaseInfo | GeoZarrInfo
-MultiBaseInfo: TypeAlias = dict[str, Info]
 InfoGeoJSON = Feature[Polygon | MultiPolygon, Info]
-MultiBaseInfoGeoJSON = Feature[Polygon | MultiPolygon, MultiBaseInfo]
 
 
 @define(kw_only=True)
@@ -1112,251 +1097,3 @@ class AsyncTilerFactory(TilerFactory):
                 headers["Content-Crs"] = f"<{uri}>"
 
             return Response(content, media_type=media_type, headers=headers)
-
-
-@define(kw_only=True)
-class AsyncMultiBaseTilerFactory(AsyncTilerFactory):
-    """Custom Tiler Factory for MultiBaseReader classes."""
-
-    reader: type[AsyncMultiBaseReader]  # type: ignore
-
-    # Assets/Expression dependency
-    layer_dependency: type[DefaultDependency] = AssetsExprParams
-
-    # Assets dependency
-    assets_dependency: type[DefaultDependency] = AssetsParams
-
-    # Overwrite the `/info` endpoint to return the list of assets when no assets is passed.
-    def info(self):
-        """Register /info endpoint."""
-
-        @self.router.get(
-            "/info",
-            response_model=MultiBaseInfo,
-            response_model_exclude_none=True,
-            response_class=JSONResponse,
-            responses={
-                200: {
-                    "description": "Return dataset's basic info or the list of available assets."
-                }
-            },
-            operation_id=f"{self.operation_prefix}getInfo",
-        )
-        async def info(
-            dataset=Depends(self.path_dependency),
-            reader_params=Depends(self.reader_dependency),
-            asset_params=Depends(self.assets_dependency),
-        ) -> MultiBaseInfo:
-            """Return dataset's basic info or the list of available assets."""
-            src_dst = self.reader(dataset, **reader_params.as_dict())
-            if asset_params.assets == [":all:"]:
-                asset_params.assets = src_dst.assets
-
-            return await src_dst.info(**asset_params.as_dict())
-
-        @self.router.get(
-            "/info.geojson",
-            response_model=MultiBaseInfoGeoJSON,
-            response_model_exclude_none=True,
-            response_class=GeoJSONResponse,
-            responses={
-                200: {
-                    "content": {"application/geo+json": {}},
-                    "description": "Return dataset's basic info as a GeoJSON feature.",
-                }
-            },
-            operation_id=f"{self.operation_prefix}getInfoGeoJSON",
-        )
-        async def info_geojson(
-            dataset=Depends(self.path_dependency),
-            reader_params=Depends(self.reader_dependency),
-            asset_params=Depends(self.assets_dependency),
-            crs=Depends(CRSParams),
-        ):
-            """Return dataset's basic info as a GeoJSON feature."""
-            src_dst = self.reader(dataset, **reader_params.as_dict())
-            if asset_params.assets == [":all:"]:
-                asset_params.assets = src_dst.assets
-
-                bounds = src_dst.get_geographic_bounds(crs or WGS84_CRS)
-                geometry = bounds_to_geometry(bounds)
-
-                return Feature(
-                    type="Feature",
-                    bbox=bounds,
-                    geometry=geometry,
-                    properties=src_dst.info(**asset_params.as_dict()),
-                )
-
-        @self.router.get(
-            "/assets",
-            response_model=list[str],
-            responses={200: {"description": "Return a list of supported assets."}},
-            operation_id=f"{self.operation_prefix}getAssets",
-        )
-        async def available_assets(
-            dataset=Depends(self.path_dependency),
-            reader_params=Depends(self.reader_dependency),
-        ):
-            """Return a list of supported assets."""
-            src_dst = self.reader(dataset, **reader_params.as_dict())
-            return src_dst.assets
-
-    # Overwrite the `/statistics` endpoint because the MultiBaseReader output model is different (Dict[str, Dict[str, BandStatistics]])
-    # and MultiBaseReader.statistics() method also has `assets` arguments to defaults to the list of assets.
-    def statistics(self):  # noqa: C901
-        """Register /statistics endpoint."""
-
-        # GET endpoint
-        @self.router.get(
-            "/asset_statistics",
-            response_class=JSONResponse,
-            response_model=MultiBaseStatistics,
-            responses={
-                200: {
-                    "content": {"application/json": {}},
-                    "description": "Return dataset's statistics.",
-                }
-            },
-            operation_id=f"{self.operation_prefix}getAssetsStatistics",
-        )
-        async def asset_statistics(
-            dataset=Depends(self.path_dependency),
-            reader_params=Depends(self.reader_dependency),
-            asset_params=Depends(self.assets_dependency),
-            dataset_params=Depends(self.dataset_dependency),
-            image_params=Depends(self.img_preview_dependency),
-            stats_params=Depends(self.stats_dependency),
-            histogram_params=Depends(self.histogram_dependency),
-        ):
-            """Per Asset statistics"""
-            src_dst = self.reader(dataset, **reader_params.as_dict())
-            if asset_params.assets == [":all:"]:
-                asset_params.assets = src_dst.assets
-
-            return await src_dst.statistics(
-                **asset_params.as_dict(),
-                **image_params.as_dict(exclude_none=False),
-                **dataset_params.as_dict(),
-                **stats_params.as_dict(),
-                hist_options=histogram_params.as_dict(),
-            )
-
-        # MultiBaseReader merged statistics
-        # https://github.com/cogeotiff/rio-tiler/blob/main/rio_tiler/io/base.py#L455-L468
-        # GET endpoint
-        @self.router.get(
-            "/statistics",
-            response_class=JSONResponse,
-            response_model=Statistics,
-            responses={
-                200: {
-                    "content": {"application/json": {}},
-                    "description": "Return dataset's statistics.",
-                }
-            },
-            operation_id=f"{self.operation_prefix}getStatistics",
-        )
-        async def statistics(
-            dataset=Depends(self.path_dependency),
-            reader_params=Depends(self.reader_dependency),
-            layer_params=Depends(self.layer_dependency),
-            dataset_params=Depends(self.dataset_dependency),
-            image_params=Depends(self.img_preview_dependency),
-            post_process=Depends(self.process_dependency),
-            stats_params=Depends(self.stats_dependency),
-            histogram_params=Depends(self.histogram_dependency),
-        ):
-            """Merged assets statistics."""
-            src_dst = self.reader(dataset, **reader_params.as_dict())
-            if layer_params.assets == [":all:"]:
-                layer_params.assets = src_dst.assets
-
-            image = await src_dst.preview(
-                **layer_params.as_dict(),
-                **image_params.as_dict(),
-                **dataset_params.as_dict(),
-            )
-
-            if post_process:
-                image = post_process(image)
-
-            return image.statistics(
-                **stats_params.as_dict(),
-                hist_options=histogram_params.as_dict(),
-            )
-
-        # POST endpoint
-        @self.router.post(
-            "/statistics",
-            response_model=MultiBaseStatisticsGeoJSON,
-            response_model_exclude_none=True,
-            response_class=GeoJSONResponse,
-            responses={
-                200: {
-                    "content": {"application/geo+json": {}},
-                    "description": "Return dataset's statistics from feature or featureCollection.",
-                }
-            },
-            operation_id=f"{self.operation_prefix}postStatisticsForGeoJSON",
-        )
-        async def geojson_statistics(
-            geojson: Annotated[
-                FeatureCollection | Feature,
-                Body(description="GeoJSON Feature or FeatureCollection."),
-            ],
-            dataset=Depends(self.path_dependency),
-            reader_params=Depends(self.reader_dependency),
-            layer_params=Depends(self.layer_dependency),
-            dataset_params=Depends(self.dataset_dependency),
-            coord_crs=Depends(CoordCRSParams),
-            dst_crs=Depends(DstCRSParams),
-            post_process=Depends(self.process_dependency),
-            image_params=Depends(self.img_part_dependency),
-            cover_scale=Depends(CoverScaleParams),
-            stats_params=Depends(self.stats_dependency),
-            histogram_params=Depends(self.histogram_dependency),
-        ):
-            """Get Statistics from a geojson feature or featureCollection."""
-            fc = geojson
-            if isinstance(fc, Feature):
-                fc = FeatureCollection(type="FeatureCollection", features=[geojson])
-
-            src_dst = self.reader(dataset, **reader_params.as_dict())
-            if layer_params.assets == [":all:"]:
-                layer_params.assets = src_dst.assets
-
-            for feature in fc.features:
-                shape = feature.model_dump(exclude_none=True)
-                image = await src_dst.feature(
-                    shape,
-                    shape_crs=coord_crs or WGS84_CRS,
-                    dst_crs=dst_crs,
-                    align_bounds_with_dataset=True,
-                    **layer_params.as_dict(),
-                    **image_params.as_dict(),
-                    **dataset_params.as_dict(),
-                )
-
-                # Get the coverage % array
-                coverage_array = image.get_coverage_array(
-                    shape,
-                    shape_crs=coord_crs or WGS84_CRS,
-                    cover_scale=cover_scale,
-                )
-
-                if post_process:
-                    image = post_process(image)
-
-                stats = image.statistics(
-                    **stats_params.as_dict(),
-                    hist_options=histogram_params.as_dict(),
-                    coverage=coverage_array,
-                )
-
-                feature.properties = feature.properties or {}
-                # NOTE: because we use `src_dst.feature` the statistics will be in form of
-                # `Dict[str, BandStatistics]` and not `Dict[str, Dict[str, BandStatistics]]`
-                feature.properties.update({"statistics": stats})
-
-            return fc.features[0] if isinstance(geojson, Feature) else fc
