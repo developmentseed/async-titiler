@@ -66,6 +66,7 @@ MOSAIC_STRICT_ZOOM = str(os.getenv("MOSAIC_STRICT_ZOOM", False)).lower() in [
     "true",
     "yes",
 ]
+MOSAIC_CHUNK_SIZE = int(os.getenv("MOSAIC_CHUNK_SIZE", 5))
 
 MultiBaseInfo: TypeAlias = dict[str, Info]
 MultiBaseInfoGeoJSON = Feature[Polygon | MultiPolygon, MultiBaseInfo]
@@ -110,7 +111,7 @@ class AsyncMultiBaseTilerFactory(AsyncTilerFactory):
         ) -> MultiBaseInfo:
             """Return dataset's basic info or the list of available assets."""
             src_dst = self.reader(dataset, **reader_params.as_dict())
-            if asset_params.assets == [":all:"]:
+            if asset_params.assets == [{"name": ":all:"}]:
                 asset_params.assets = src_dst.assets
 
             return await src_dst.info(**asset_params.as_dict())
@@ -136,7 +137,7 @@ class AsyncMultiBaseTilerFactory(AsyncTilerFactory):
         ):
             """Return dataset's basic info as a GeoJSON feature."""
             src_dst = self.reader(dataset, **reader_params.as_dict())
-            if asset_params.assets == [":all:"]:
+            if asset_params.assets == [{"name": ":all:"}]:
                 asset_params.assets = src_dst.assets
 
                 bounds = src_dst.get_geographic_bounds(crs or WGS84_CRS)
@@ -192,7 +193,7 @@ class AsyncMultiBaseTilerFactory(AsyncTilerFactory):
         ):
             """Per Asset statistics"""
             src_dst = self.reader(dataset, **reader_params.as_dict())
-            if asset_params.assets == [":all:"]:
+            if asset_params.assets == [{"name": ":all:"}]:
                 asset_params.assets = src_dst.assets
 
             return await src_dst.statistics(
@@ -230,7 +231,7 @@ class AsyncMultiBaseTilerFactory(AsyncTilerFactory):
         ):
             """Merged assets statistics."""
             src_dst = self.reader(dataset, **reader_params.as_dict())
-            if layer_params.assets == [":all:"]:
+            if layer_params.assets == [{"name": ":all:"}]:
                 layer_params.assets = src_dst.assets
 
             image = await src_dst.preview(
@@ -284,7 +285,7 @@ class AsyncMultiBaseTilerFactory(AsyncTilerFactory):
                 fc = FeatureCollection(type="FeatureCollection", features=[geojson])
 
             src_dst = self.reader(dataset, **reader_params.as_dict())
-            if layer_params.assets == [":all:"]:
+            if layer_params.assets == [{"name": ":all:"}]:
                 layer_params.assets = src_dst.assets
 
             for feature in fc.features:
@@ -782,6 +783,7 @@ class AsyncMosaicTilerFactory(MosaicTilerFactory):
                     tilesize=tilesize,
                     search_options=assets_accessor_params.as_dict(),
                     pixel_selection=pixel_selection,
+                    chunk_size=MOSAIC_CHUNK_SIZE,
                     **tile_params.as_dict(),
                     **layer_params.as_dict(),
                     **dataset_params.as_dict(),
@@ -800,6 +802,15 @@ class AsyncMosaicTilerFactory(MosaicTilerFactory):
             headers: dict[str, str] = {}
             if OptionalHeader.x_assets in self.optional_headers:
                 headers["X-Assets"] = ",".join(assets)
+
+            if "x_mosaic" in self.optional_headers:
+                meta = image.metadata or {}
+                if (
+                    (m := meta.get("mosaic_method"))
+                    and (c := meta.get("mosaic_assets_count"))
+                    and (u := meta.get("mosaic_assets_used"))
+                ):
+                    headers["X-Mosaic"] = f"method;{m}, found; {c}, used; {u}"
 
             if image.bounds is not None:
                 headers["Content-Bbox"] = ",".join(map(str, image.bounds))
@@ -1121,6 +1132,7 @@ class AsyncMosaicTilerFactory(MosaicTilerFactory):
                         align_bounds_with_dataset=True,
                         search_options=assets_accessor_params.as_dict(),
                         pixel_selection=pixel_selection,
+                        chunk_size=MOSAIC_CHUNK_SIZE,
                         **layer_params.as_dict(),
                         **dataset_params.as_dict(),
                         **image_params.as_dict(),
@@ -1202,6 +1214,7 @@ class AsyncMosaicTilerFactory(MosaicTilerFactory):
                     bounds_crs=coord_crs or WGS84_CRS,
                     search_options=assets_accessor_params.as_dict(),
                     pixel_selection=pixel_selection,
+                    chunk_size=MOSAIC_CHUNK_SIZE,
                     **layer_params.as_dict(),
                     **dataset_params.as_dict(),
                     **image_params.as_dict(),
@@ -1221,6 +1234,15 @@ class AsyncMosaicTilerFactory(MosaicTilerFactory):
             headers: dict[str, str] = {}
             if OptionalHeader.x_assets in self.optional_headers:
                 headers["X-Assets"] = ",".join(assets)
+
+            if "x_mosaic" in self.optional_headers:
+                meta = image.metadata or {}
+                if (
+                    (m := meta.get("mosaic_method"))
+                    and (c := meta.get("mosaic_assets_count"))
+                    and (u := meta.get("mosaic_assets_used"))
+                ):
+                    headers["X-Mosaic"] = f"method;{m}, found; {c}, used; {u}"
 
             if image.bounds is not None:
                 headers["Content-Bbox"] = ",".join(map(str, image.bounds))
@@ -1288,6 +1310,7 @@ class AsyncMosaicTilerFactory(MosaicTilerFactory):
                     dst_crs=dst_crs,
                     search_options=assets_accessor_params.as_dict(),
                     pixel_selection=pixel_selection,
+                    chunk_size=MOSAIC_CHUNK_SIZE,
                     **layer_params.as_dict(),
                     **image_params.as_dict(),
                     **dataset_params.as_dict(),
@@ -1306,6 +1329,15 @@ class AsyncMosaicTilerFactory(MosaicTilerFactory):
             headers: dict[str, str] = {}
             if OptionalHeader.x_assets in self.optional_headers:
                 headers["X-Assets"] = ",".join(assets)
+
+            if "x_mosaic" in self.optional_headers:
+                meta = image.metadata or {}
+                if (
+                    (m := meta.get("mosaic_method"))
+                    and (c := meta.get("mosaic_assets_count"))
+                    and (u := meta.get("mosaic_assets_used"))
+                ):
+                    headers["X-Mosaic"] = f"method;{m}, found; {c}, used; {u}"
 
             if image.bounds is not None:
                 headers["Content-Bbox"] = ",".join(map(str, image.bounds))
@@ -1493,6 +1525,7 @@ class AsyncMosaicTilerFactory(MosaicTilerFactory):
                         bounds_crs=ogc_params.bbox_crs or WGS84_CRS,
                         search_options=assets_accessor_params.as_dict(),
                         pixel_selection=pixel_selection,
+                        chunk_size=MOSAIC_CHUNK_SIZE,
                         width=ogc_params.width,
                         height=ogc_params.height,
                         max_size=ogc_params.max_size,
@@ -1509,6 +1542,7 @@ class AsyncMosaicTilerFactory(MosaicTilerFactory):
                         height=ogc_params.height,
                         max_size=ogc_params.max_size,
                         dst_crs=ogc_params.crs or src_dst.crs,
+                        chunk_size=MOSAIC_CHUNK_SIZE,
                         **layer_params.as_dict(),
                         **dataset_params.as_dict(),
                     )
@@ -1527,6 +1561,15 @@ class AsyncMosaicTilerFactory(MosaicTilerFactory):
             headers: dict[str, str] = {}
             if OptionalHeader.x_assets in self.optional_headers:
                 headers["X-Assets"] = ",".join(assets)
+
+            if "x_mosaic" in self.optional_headers:
+                meta = image.metadata or {}
+                if (
+                    (m := meta.get("mosaic_method"))
+                    and (c := meta.get("mosaic_assets_count"))
+                    and (u := meta.get("mosaic_assets_used"))
+                ):
+                    headers["X-Mosaic"] = f"method;{m}, found; {c}, used; {u}"
 
             if image.bounds is not None:
                 headers["Content-Bbox"] = ",".join(map(str, image.bounds))

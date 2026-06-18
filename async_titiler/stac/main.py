@@ -78,7 +78,11 @@ app.add_middleware(CacheControlMiddleware, cachecontrol=settings.cachecontrol)
 optional_headers = []
 if settings.debug:
     app.add_middleware(LoggerMiddleware)
-    optional_headers = [OptionalHeader.server_timing, OptionalHeader.x_assets]
+    optional_headers = [
+        OptionalHeader.server_timing,
+        OptionalHeader.x_assets,
+        "x_mosaic",
+    ]
 
 
 APP_CONFORMS_TO = {
