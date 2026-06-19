@@ -222,7 +222,7 @@ requires-dist = [
     { name = "obstore" },
     { name = "orjson" },
     { name = "pydantic-settings", specifier = "~=2.0" },
-    { name = "rio-tiler", extras = ["geotiff", "zarr"], specifier = ">=9.1,<10.0" },
+    { name = "rio-tiler", extras = ["geotiff", "zarr"], specifier = ">=9.3,<10.0" },
     { name = "rustac" },
     { name = "starlette-cramjam", specifier = ">=0.4,<0.6" },
     { name = "titiler-core", specifier = ">=2.0.4,<2.1" },
@@ -3173,7 +3173,7 @@ wheels = [
 
 [[package]]
 name = "rio-tiler"
-version = "9.2.1"
+version = "9.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
@@ -3189,9 +3189,9 @@ dependencies = [
     { name = "rasterio", version = "1.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "typing-extensions", marker = "python_full_version < '3.15'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1a/4f/9347131e67d1a7cff320f69b3b495c38de1a865f9747549b133176f8721b/rio_tiler-9.2.1.tar.gz", hash = "sha256:daf3c8d91dc417be2660ca23c0e65d8a7ef1f49512699e726f1adda880c40945", size = 211487, upload-time = "2026-06-12T08:59:57.519Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d7/b2/780bfcb8e01bc5a4b41f14a64b6b0cbd14295aa47f4fb49d6eaf93b6412d/rio_tiler-9.3.0.tar.gz", hash = "sha256:845ffdbedfbab13efb0c0b877e2ec2fec61253aa86a9acc6732cd106402317ae", size = 211718, upload-time = "2026-06-19T09:51:18.746Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4c/87/fc4972e36213642ca89ecd3431e3916510f5c2a3848cfb42dd97715f2912/rio_tiler-9.2.1-py3-none-any.whl", hash = "sha256:eeaa6bd1a6e6f092eab810524e5f2fae360538349a88d1a1350e2dd38e413063", size = 315383, upload-time = "2026-06-12T08:59:55.86Z" },
+    { url = "https://files.pythonhosted.org/packages/4f/93/b18e07b19a3ab9063d95303653047e572ddabe42bc06ded1df586725e4f8/rio_tiler-9.3.0-py3-none-any.whl", hash = "sha256:d14d23c61b245f556d89742c3f45dddb7160ab9dd12477095cce45f278968a31", size = 315633, upload-time = "2026-06-19T09:51:17.013Z" },
 ]
 
 [package.optional-dependencies]

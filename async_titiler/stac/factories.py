@@ -66,7 +66,6 @@ MOSAIC_STRICT_ZOOM = str(os.getenv("MOSAIC_STRICT_ZOOM", False)).lower() in [
     "true",
     "yes",
 ]
-MOSAIC_CHUNK_SIZE = int(os.getenv("MOSAIC_CHUNK_SIZE", 5))
 
 MultiBaseInfo: TypeAlias = dict[str, Info]
 MultiBaseInfoGeoJSON = Feature[Polygon | MultiPolygon, MultiBaseInfo]
@@ -783,7 +782,6 @@ class AsyncMosaicTilerFactory(MosaicTilerFactory):
                     tilesize=tilesize,
                     search_options=assets_accessor_params.as_dict(),
                     pixel_selection=pixel_selection,
-                    chunk_size=MOSAIC_CHUNK_SIZE,
                     **tile_params.as_dict(),
                     **layer_params.as_dict(),
                     **dataset_params.as_dict(),
@@ -1132,7 +1130,6 @@ class AsyncMosaicTilerFactory(MosaicTilerFactory):
                         align_bounds_with_dataset=True,
                         search_options=assets_accessor_params.as_dict(),
                         pixel_selection=pixel_selection,
-                        chunk_size=MOSAIC_CHUNK_SIZE,
                         **layer_params.as_dict(),
                         **dataset_params.as_dict(),
                         **image_params.as_dict(),
@@ -1214,7 +1211,6 @@ class AsyncMosaicTilerFactory(MosaicTilerFactory):
                     bounds_crs=coord_crs or WGS84_CRS,
                     search_options=assets_accessor_params.as_dict(),
                     pixel_selection=pixel_selection,
-                    chunk_size=MOSAIC_CHUNK_SIZE,
                     **layer_params.as_dict(),
                     **dataset_params.as_dict(),
                     **image_params.as_dict(),
@@ -1310,7 +1306,6 @@ class AsyncMosaicTilerFactory(MosaicTilerFactory):
                     dst_crs=dst_crs,
                     search_options=assets_accessor_params.as_dict(),
                     pixel_selection=pixel_selection,
-                    chunk_size=MOSAIC_CHUNK_SIZE,
                     **layer_params.as_dict(),
                     **image_params.as_dict(),
                     **dataset_params.as_dict(),
@@ -1525,7 +1520,6 @@ class AsyncMosaicTilerFactory(MosaicTilerFactory):
                         bounds_crs=ogc_params.bbox_crs or WGS84_CRS,
                         search_options=assets_accessor_params.as_dict(),
                         pixel_selection=pixel_selection,
-                        chunk_size=MOSAIC_CHUNK_SIZE,
                         width=ogc_params.width,
                         height=ogc_params.height,
                         max_size=ogc_params.max_size,
@@ -1542,7 +1536,6 @@ class AsyncMosaicTilerFactory(MosaicTilerFactory):
                         height=ogc_params.height,
                         max_size=ogc_params.max_size,
                         dst_crs=ogc_params.crs or src_dst.crs,
-                        chunk_size=MOSAIC_CHUNK_SIZE,
                         **layer_params.as_dict(),
                         **dataset_params.as_dict(),
                     )

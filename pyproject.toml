@@ -28,7 +28,7 @@ dependencies = [
     "titiler-core>=2.0.4,<2.1",
     "titiler-mosaic>=2.0.4,<2.1",
     "obstore",
-    "rio-tiler[geotiff,zarr]>=9.1,<10.0",
+    "rio-tiler[geotiff,zarr]>=9.3,<10.0",
     "starlette-cramjam>=0.4,<0.6",
     "pydantic-settings~=2.0",
     "rustac",
