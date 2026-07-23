@@ -31,7 +31,7 @@ dependencies = [
     "rio-tiler[geotiff,zarr]>=9.3,<10.0",
     "starlette-cramjam>=0.4,<0.6",
     "pydantic-settings~=2.0",
-    "rustac",
+    "rustac>=0.9.15,<1.0",
     "boto3",
 ]
 [project.optional-dependencies]

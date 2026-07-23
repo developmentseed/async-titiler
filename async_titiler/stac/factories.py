@@ -113,7 +113,8 @@ class AsyncMultiBaseTilerFactory(AsyncTilerFactory):
             if asset_params.assets == [{"name": ":all:"}]:
                 asset_params.assets = src_dst.assets
 
-            return await src_dst.info(**asset_params.as_dict())
+            info = await src_dst.info(**asset_params.as_dict())
+            return info
 
         @self.router.get(
             "/info.geojson",
@@ -141,12 +142,13 @@ class AsyncMultiBaseTilerFactory(AsyncTilerFactory):
 
                 bounds = src_dst.get_geographic_bounds(crs or WGS84_CRS)
                 geometry = bounds_to_geometry(bounds)
+                info = await src_dst.info(**asset_params.as_dict())
 
                 return Feature(
                     type="Feature",
                     bbox=bounds,
                     geometry=geometry,
-                    properties=src_dst.info(**asset_params.as_dict()),
+                    properties=info,
                 )
 
         @self.router.get(
@@ -397,9 +399,12 @@ class AsyncMosaicTilerFactory(MosaicTilerFactory):
                 reader_options=reader_params.as_dict(),
                 **backend_params.as_dict(),
             ) as src_dst:
+                # NOTE: we first fetch the info so the crs/bounds would be updated
+                # if there is only one collection
+                # before calling `get_geographic_bounds`
+                info = await src_dst.info()
                 bounds = src_dst.get_geographic_bounds(crs or WGS84_CRS)
                 geometry = bounds_to_geometry(bounds)
-                info = await src_dst.info()
                 return Feature(
                     type="Feature",
                     bbox=bounds,
@@ -449,6 +454,10 @@ class AsyncMosaicTilerFactory(MosaicTilerFactory):
                 reader_options=reader_params.as_dict(),
                 **backend_params.as_dict(),
             ) as src_dst:
+                # NOTE: we first fetch the info so the crs/bounds would be updated
+                # if there is only one collection
+                # before calling `get_geographic_bounds`
+                _ = await src_dst.info()
                 bounds = src_dst.get_geographic_bounds(crs or WGS84_CRS)
 
             collection_bbox = {
@@ -587,6 +596,10 @@ class AsyncMosaicTilerFactory(MosaicTilerFactory):
                 reader_options=reader_params.as_dict(),
                 **backend_params.as_dict(),
             ) as src_dst:
+                # NOTE: we first fetch the info so the crs/bounds would be updated
+                # if there is only one collection
+                # before calling `get_geographic_bounds`
+                _ = await src_dst.info()
                 bounds = src_dst.get_geographic_bounds(tms.rasterio_geographic_crs)
                 minzoom = minzoom if minzoom is not None else src_dst.minzoom
                 maxzoom = maxzoom if maxzoom is not None else src_dst.maxzoom
@@ -909,6 +922,10 @@ class AsyncMosaicTilerFactory(MosaicTilerFactory):
                 reader_options=reader_params.as_dict(),
                 **backend_params.as_dict(),
             ) as src_dst:
+                # NOTE: we first fetch the info so the crs/bounds would be updated
+                # if there is only one collection
+                # before calling `get_geographic_bounds`
+                _ = await src_dst.info()
                 bounds = src_dst.get_geographic_bounds(tms.rasterio_geographic_crs)
                 minzoom = minzoom if minzoom is not None else src_dst.minzoom
                 maxzoom = maxzoom if maxzoom is not None else src_dst.maxzoom

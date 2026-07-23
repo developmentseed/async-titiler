@@ -4,8 +4,8 @@ import json
 from dataclasses import dataclass, field
 from typing import Annotated, Any, Literal, NotRequired, TypedDict, cast
 
-import httpx2 as httpx
 import pystac
+import rustac
 from cache import AsyncTTL
 from fastapi import Path, Query
 from pydantic import AfterValidator
@@ -220,11 +220,18 @@ async def get_stac_item(
     headers: dict | None = None,
 ) -> dict[str, Any]:
     """Fetch STAC items."""
-    url = f"{url}/collections/{collection_id}/items/{item_id}"
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(url)
-        resp.raise_for_status()
-        return resp.json()
+    client = rustac.ApiClient(
+        url,
+        headers=headers,
+    )
+    results = await client.search(
+        collections=[collection_id],
+        ids=[item_id],
+    )
+    if not results:
+        raise ValueError(f"Item {item_id} not found in collection {collection_id}")
+
+    return results[0]
 
 
 async def STACItemParams(

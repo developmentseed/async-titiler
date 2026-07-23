@@ -5,7 +5,9 @@ from collections.abc import Sequence
 from typing import Any, TypedDict, cast
 
 import attr
+import pystac
 import rustac
+from cache import AsyncTTL
 from geojson_pydantic import Point, Polygon
 from geojson_pydantic.geometries import Geometry
 from morecantile import Tile, TileMatrixSet
@@ -220,10 +222,17 @@ class AsyncSTACAPIBackend(AsyncBaseBackend):
     bounds: BBox = attr.ib(default=(-180, -90, 180, 90))
     crs: CRS = attr.ib(default=WGS84_CRS)
 
+    client: rustac.ApiClient = attr.ib(init=False)
+
     _backend_name = "STACAPI"
 
     def __attrs_post_init__(self):
         """Post Init."""
+        self.client = rustac.ApiClient(
+            f"{self.api_params['url']}",
+            headers=self.api_params.get("headers"),
+        )
+
         if bbox := self.input.get("bbox"):
             self.bounds = tuple(bbox)
 
@@ -313,44 +322,29 @@ class AsyncSTACAPIBackend(AsyncBaseBackend):
             "include": fields,
         }
         params.pop("bbox", None)
-        results = await rustac.search(self.api_params["url"], **params)
+        results = await self.client.search(**params)
         return [cast(Item, itm) for itm in results]
 
-    # @AsyncTTL(time_to_live=300, skip_arg=1)
-    # def _get_collection(self, collection_id) -> pystac.Collection:
-    #     client = Client.open(f"{self.api_params['url']}", stac_io=stac_api_io)
-    #     return client.get_collection(collection_id)
-    #
-    # def get_geographic_bounds(self, crs: CRS) -> BBox:
-    #     """Override method to fetch bounds from collection metadata."""
-    #     if not self.input.get("bbox") and (
-    #         collections := self.input.get("collections", [])
-    #     ):
-    #         if len(collections) == 1:
-    #             collection = self._get_collection(collections[0])
-    #             if collection.extent.spatial:
-    #                 if collection.extent.spatial.bboxes[0]:
-    #                     self.bounds = list(collection.extent.spatial.bboxes[0])
-    #                     self.crs = WGS84_CRS
-    #
-    #     return super().get_geographic_bounds(crs)
+    @AsyncTTL(time_to_live=300, skip_args=1)
+    async def _get_collection(self, collection_id) -> pystac.Collection:
+        collection = await self.client.get_collection(collection_id)
+        return pystac.Collection.from_dict(collection)
 
     async def info(self) -> MosaicInfo:  # type: ignore
         """Mosaic info."""
         renders: dict[str, Any] = {}
-        bounds = self.bounds
-        crs = self.crs
 
-        # if collections := self.input.get("collections", []):
-        #     if len(collections) == 1:
-        #         collection = self._get_collection(collections[0])
-        #         if not self.input.get("bbox") and collection.extent.spatial:
-        #             bounds = tuple(collection.extent.spatial.bboxes[0])
-        #             crs = WGS84_CRS
-        #         renders = collection.extra_fields.get("renders", {})
+        if collections := self.input.get("collections", []):
+            if len(collections) == 1:
+                collection = await self._get_collection(collections[0])
+                if not self.input.get("bbox") and collection.extent.spatial:
+                    self.bounds = tuple(collection.extent.spatial.bboxes[0])
+                    self.crs = WGS84_CRS
+
+                renders = collection.extra_fields.get("renders", {})
 
         return MosaicInfo(
-            bounds=bounds,
-            crs=CRS_to_uri(crs) or crs.to_wkt(),
+            bounds=self.bounds,
+            crs=CRS_to_uri(self.crs) or self.crs.to_wkt(),
             renders=renders,  # type: ignore
         )
