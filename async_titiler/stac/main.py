@@ -84,6 +84,15 @@ if settings.debug:
         "x_mosaic",
     ]
 
+    @app.get("/collections", include_in_schema=False, tags=["DEBUG"])
+    async def list_collections(request: Request):
+        """list collections."""
+        import rustac
+
+        client = rustac.ApiClient(stac_settings.url)
+        collections = await client.get_collections()
+        return [col["id"] for col in collections]
+
 
 APP_CONFORMS_TO = {
     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/core",

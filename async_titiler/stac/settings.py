@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings
 class STACAPISettings(BaseSettings):
     """STAC API settings"""
 
-    url: str | None = None
+    url: str
 
     model_config = {
         "env_prefix": "ATITILER_STACAPI_",
