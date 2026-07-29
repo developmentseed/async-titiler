@@ -1,16 +1,70 @@
 services:
-  api:
+  app:
+    build:
+      context: .
+    ports:
+      - "8080:8080"
+    environment:
+      - ATITILER_API_DEBUG=true
+      # AWS S3 endpoint config
+      # - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      # - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    command: ["uvicorn", "async_titiler.main:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "1"]
+
+  app-mosaic:
     build:
       context: .
     ports:
       - "8081:8081"
     environment:
-      # Application
-      - HOST=0.0.0.0
-      - PORT=8081
-      - WEB_CONCURRENCY=1
-      - WORKERS_PER_CORE=1
+      - ATITILER_API_DEBUG=true
+      - ATITILER_STACAPI_URL=http://stac-api:8082
       # AWS S3 endpoint config
       # - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       # - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-    command: ["uvicorn", "async_titiler.main:app", "--host", "0.0.0.0", "--port", "8081", "--workers", "1"]
+    command: ["uvicorn", "async_titiler.stac.main:app", "--host", "0.0.0.0", "--port", "8081", "--workers", "1"]
+    depends_on:
+      - stac-api
+    volumes:
+      - ./benchmark/data:/data
+
+  stac-api:
+    image: ghcr.io/stac-utils/stac-fastapi-pgstac:6.3.1
+    environment:
+      - PGUSER=username
+      - PGPASSWORD=password
+      - PGDATABASE=postgis
+      - PGHOST=database
+      - PGPORT=5432
+      - WEB_CONCURRENCY=10
+      - DB_MIN_CONN_SIZE=1
+      - DB_MAX_CONN_SIZE=1
+      - USE_API_HYDRATE=false
+      - ENABLE_TRANSACTIONS_EXTENSIONS=false
+      - ENABLE_CATALOGS_EXTENSION=false
+    ports:
+      - "8082:8082"
+    command: ["uvicorn", "stac_fastapi.pgstac.app:app", "--host", "0.0.0.0", "--port", "8082"]
+    depends_on:
+      database:
+        condition: service_healthy
+
+  database:
+    image: ghcr.io/stac-utils/pgstac:v${PGSTAC_VERSION-0.9.11}
+    environment:
+      - POSTGRES_USER=username
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=postgis
+      - PGUSER=username
+      - PGDATABASE=postgis
+    ports:
+      - "5439:5432"
+    command: postgres -N 500
+    volumes:
+      - ./.pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-d", "postgis"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s

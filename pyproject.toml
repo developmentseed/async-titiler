@@ -45,6 +45,7 @@ dev = [
     "pytest",
     "pytest-cov",
     "pytest-asyncio",
+    "pytest-benchmark",
     "httpx2",
     "IPython",
     "jupyter",

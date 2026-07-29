@@ -24,11 +24,7 @@ COPY LICENSE LICENSE
 RUN python -m pip install --no-cache-dir --upgrade .
 RUN rm -rf async_titiler/ pyproject.toml README.md LICENSE
 
-###################################################
-# For compatibility (might be removed at one point)
-ENV MODULE_NAME=async_titiler.main
-ENV VARIABLE_NAME=app
-ENV HOST=0.0.0.0
-ENV PORT=80
-ENV WEB_CONCURRENCY=1
-CMD gunicorn -k uvicorn.workers.UvicornWorker ${MODULE_NAME}:${VARIABLE_NAME} --bind ${HOST}:${PORT} --workers ${WEB_CONCURRENCY}
+RUN groupadd -g 1000 user && \
+    useradd -u 1000 -g user -s /bin/bash -m user
+
+USER user

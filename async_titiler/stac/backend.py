@@ -328,6 +328,9 @@ class AsyncSTACAPIBackend(AsyncBaseBackend):
     @AsyncTTL(time_to_live=300, skip_args=1)
     async def _get_collection(self, collection_id) -> pystac.Collection:
         collection = await self.client.get_collection(collection_id)
+        if not collection:
+            raise ValueError(f"Collection {collection_id} not found")
+
         return pystac.Collection.from_dict(collection)
 
     async def info(self) -> MosaicInfo:  # type: ignore
