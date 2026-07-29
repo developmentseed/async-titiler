@@ -15,6 +15,24 @@ uv run pypgstac load items stac/items.json --dsn postgresql://username:password@
 curl http://127.0.0.1:8081/collections/world/info | jq
 ```
 
+### Benchmark
+
+```bash
+uv run pytest benchmarks.py --benchmark-only --benchmark-columns 'min, max, mean, median'
+
+-------------------------------------------- benchmark: 7 tests --------------------------------------------
+Name (time in ms)                    Min                 Max               Mean             Median          
+------------------------------------------------------------------------------------------------------------
+test_benchmark_tile[5/16/5]      14.4092 (1.0)       20.1143 (1.0)      15.8602 (1.0)      15.4488 (1.0)    
+test_benchmark_tile[4/5/9]       14.6298 (1.02)      21.0231 (1.05)     16.5234 (1.04)     15.8367 (1.03)   
+test_benchmark_tile[6/43/31]     14.7433 (1.02)      70.6601 (3.51)     17.6450 (1.11)     16.0529 (1.04)   
+test_benchmark_tile[3/5/0]       18.7851 (1.30)      46.9295 (2.33)     21.4156 (1.35)     20.3710 (1.32)   
+test_benchmark_tile[2/2/1]       26.9774 (1.87)     103.0088 (5.12)     34.7674 (2.19)     29.5133 (1.91)   
+test_benchmark_tile[1/1/1]       35.5150 (2.46)      65.6450 (3.26)     40.4831 (2.55)     37.6476 (2.44)   
+test_benchmark_tile[0/0/0]       83.9419 (5.83)     100.5330 (5.00)     90.8785 (5.73)     89.0843 (5.77)   
+------------------------------------------------------------------------------------------------------------
+```
+
 ### Siege
 ```
 # 50 concurrents / repeat 10 times (500 tiles)
