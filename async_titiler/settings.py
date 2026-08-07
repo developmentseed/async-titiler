@@ -1,6 +1,6 @@
 """API settings."""
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -8,10 +8,20 @@ class ApiSettings(BaseSettings):
     """API settings"""
 
     name: str = "async-titiler"
+
     cors_origins: str = "*"
+
     cachecontrol: str = "public, max-age=3600"
+    cachecontrol_exclude_paths: set[str] = Field(
+        default={
+            r"/healthz",
+        }
+    )
+
     root_path: str = ""
+
     debug: bool = False
+
     template_directory: str | None = None
 
     model_config = {

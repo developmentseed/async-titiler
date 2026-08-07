@@ -14,6 +14,7 @@ from starlette import __version__ as starlette_version
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.templating import Jinja2Templates
+from starlette_cramjam.middleware import CompressionMiddleware
 
 from titiler.core import __version__ as titiler_version
 from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers
@@ -73,7 +74,24 @@ if settings.cors_origins:
         allow_headers=["*"],
     )
 
-app.add_middleware(CacheControlMiddleware, cachecontrol=settings.cachecontrol)
+app.add_middleware(
+    CacheControlMiddleware,
+    cachecontrol=settings.cachecontrol,
+    exclude_path=settings.cachecontrol_exclude_paths,
+)
+
+app.add_middleware(
+    CompressionMiddleware,
+    exclude_mediatype={
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/jp2",
+        "image/webp",
+        "image/tiff",
+    },
+)
+
 
 optional_headers = []
 if settings.debug:
