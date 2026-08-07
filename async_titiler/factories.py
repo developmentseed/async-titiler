@@ -1,12 +1,13 @@
 """async-titiler factory."""
 
+import json
 import logging
 import os
 from collections.abc import Callable
 from typing import Annotated, Any, Literal, TypeAlias
 from urllib.parse import urlencode
 
-from attrs import define
+from attrs import define, field
 from fastapi import Body, Depends, Path, Query
 from geojson_pydantic.features import Feature, FeatureCollection
 from geojson_pydantic.geometries import MultiPolygon, Polygon
@@ -36,7 +37,7 @@ from titiler.core.models.responses import (
     Statistics,
     StatisticsGeoJSON,
 )
-from titiler.core.resources.enums import ImageType, MediaType
+from titiler.core.resources.enums import ImageType, MediaType, OptionalHeader
 from titiler.core.resources.responses import GeoJSONResponse, JSONResponse
 from titiler.core.utils import (
     accept_media_type,
@@ -63,6 +64,10 @@ class AsyncTilerFactory(TilerFactory):
 
     # Tile/Tilejson/WMTS Dependencies
     tile_dependency: type[DefaultDependency] = DefaultDependency
+
+    get_renders: Callable[[AsyncBaseReader], dict[str, dict[str, Any]]] = field(
+        default=lambda obj: {}
+    )
 
     ############################################################################
     # /info
@@ -692,6 +697,10 @@ class AsyncTilerFactory(TilerFactory):
                 headers["Content-Bbox"] = ",".join(map(str, image.bounds))
             if uri := CRS_to_uri(image.crs):
                 headers["Content-Crs"] = f"<{uri}>"
+            if OptionalHeader.projjson_crs in self.optional_headers:
+                headers["Content-Crs-JSON"] = json.dumps(
+                    image.crs.to_dict(projjson=True)
+                )
 
             return Response(content, media_type=media_type, headers=headers)
 
@@ -768,13 +777,23 @@ class AsyncTilerFactory(TilerFactory):
 
             tms = self.supported_tms.get(tileMatrixSetId)
             src_dst = self.reader(dataset, tms=tms, **reader_params.as_dict())
-            return {
+            body = {
                 "bounds": src_dst.get_geographic_bounds(tms.rasterio_geographic_crs),
                 "minzoom": minzoom if minzoom is not None else src_dst.minzoom,
                 "maxzoom": maxzoom if maxzoom is not None else src_dst.maxzoom,
                 "tiles": [tiles_url],
                 "attribution": os.environ.get("TITILER_DEFAULT_ATTRIBUTION"),
             }
+
+            # Custom TiTiler tilejson fields
+            body["raster_layers"] = self.get_renders(src_dst)
+
+            info = await src_dst.info()
+            body["band_descriptions"] = getattr(info, "band_descriptions", None)
+            body["data_type"] = getattr(info, "dtype", None)
+            body["minmax"] = getattr(info, "minmax", None)
+
+            return body
 
     ############################################################################
     # /point
@@ -878,6 +897,10 @@ class AsyncTilerFactory(TilerFactory):
                 headers["Content-Bbox"] = ",".join(map(str, image.bounds))
             if uri := CRS_to_uri(image.crs):
                 headers["Content-Crs"] = f"<{uri}>"
+            if OptionalHeader.projjson_crs in self.optional_headers:
+                headers["Content-Crs-JSON"] = json.dumps(
+                    image.crs.to_dict(projjson=True)
+                )
 
             return Response(content, media_type=media_type, headers=headers)
 
@@ -947,6 +970,10 @@ class AsyncTilerFactory(TilerFactory):
                 headers["Content-Bbox"] = ",".join(map(str, image.bounds))
             if uri := CRS_to_uri(image.crs):
                 headers["Content-Crs"] = f"<{uri}>"
+            if OptionalHeader.projjson_crs in self.optional_headers:
+                headers["Content-Crs-JSON"] = json.dumps(
+                    image.crs.to_dict(projjson=True)
+                )
 
             return Response(content, media_type=media_type, headers=headers)
 
@@ -1012,6 +1039,10 @@ class AsyncTilerFactory(TilerFactory):
                 headers["Content-Bbox"] = ",".join(map(str, image.bounds))
             if uri := CRS_to_uri(image.crs):
                 headers["Content-Crs"] = f"<{uri}>"
+            if OptionalHeader.projjson_crs in self.optional_headers:
+                headers["Content-Crs-JSON"] = json.dumps(
+                    image.crs.to_dict(projjson=True)
+                )
 
             return Response(content, media_type=media_type, headers=headers)
 
@@ -1095,5 +1126,9 @@ class AsyncTilerFactory(TilerFactory):
                 headers["Content-Bbox"] = ",".join(map(str, image.bounds))
             if uri := CRS_to_uri(image.crs):
                 headers["Content-Crs"] = f"<{uri}>"
+            if OptionalHeader.projjson_crs in self.optional_headers:
+                headers["Content-Crs-JSON"] = json.dumps(
+                    image.crs.to_dict(projjson=True)
+                )
 
             return Response(content, media_type=media_type, headers=headers)

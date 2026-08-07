@@ -1,5 +1,6 @@
 """async-titiler factory."""
 
+import json
 import logging
 import os
 from collections.abc import Callable
@@ -341,6 +342,10 @@ class AsyncMosaicTilerFactory(MosaicTilerFactory):
 
     dataset_reader: Any = field(default=None, init=False)
     environment_dependency: Any = field(default=None, init=False)
+
+    get_renders: Callable[[AsyncBaseBackend], dict[str, dict[str, Any]]] = field(
+        default=lambda obj: {}
+    )
 
     ############################################################################
     # /info
@@ -823,17 +828,21 @@ class AsyncMosaicTilerFactory(MosaicTilerFactory):
                 ):
                     headers["X-Mosaic"] = f"method;{m}, found; {c}, used; {u}"
 
-            if image.bounds is not None:
-                headers["Content-Bbox"] = ",".join(map(str, image.bounds))
-            if uri := CRS_to_uri(image.crs):
-                headers["Content-Crs"] = f"<{uri}>"
-
             if (
                 OptionalHeader.server_timing in self.optional_headers
                 and image.metadata.get("timings")
             ):
                 headers["Server-Timing"] = ", ".join(
                     [f"{name};dur={time}" for (name, time) in image.metadata["timings"]]
+                )
+
+            if image.bounds is not None:
+                headers["Content-Bbox"] = ",".join(map(str, image.bounds))
+            if uri := CRS_to_uri(image.crs):
+                headers["Content-Crs"] = f"<{uri}>"
+            if OptionalHeader.projjson_crs in self.optional_headers:
+                headers["Content-Crs-JSON"] = json.dumps(
+                    image.crs.to_dict(projjson=True)
                 )
 
             return Response(content, media_type=media_type, headers=headers)
@@ -934,7 +943,7 @@ class AsyncMosaicTilerFactory(MosaicTilerFactory):
                     (bounds[1] + bounds[3]) / 2,
                     minzoom,
                 )
-                return {
+                body = {
                     "bounds": bounds,
                     "center": center,
                     "minzoom": minzoom,
@@ -942,6 +951,11 @@ class AsyncMosaicTilerFactory(MosaicTilerFactory):
                     "tiles": [tiles_url],
                     "attribution": os.environ.get("TITILER_DEFAULT_ATTRIBUTION"),
                 }
+
+                # Custom TiTiler tilejson fields
+                body["raster_layers"] = self.get_renders(src_dst)
+
+            return body
 
     def map_viewer(self):  # noqa: C901
         """Register /map.html endpoint."""
@@ -1257,17 +1271,21 @@ class AsyncMosaicTilerFactory(MosaicTilerFactory):
                 ):
                     headers["X-Mosaic"] = f"method;{m}, found; {c}, used; {u}"
 
-            if image.bounds is not None:
-                headers["Content-Bbox"] = ",".join(map(str, image.bounds))
-            if uri := CRS_to_uri(image.crs):
-                headers["Content-Crs"] = f"<{uri}>"
-
             if (
                 OptionalHeader.server_timing in self.optional_headers
                 and image.metadata.get("timings")
             ):
                 headers["Server-Timing"] = ", ".join(
                     [f"{name};dur={time}" for (name, time) in image.metadata["timings"]]
+                )
+
+            if image.bounds is not None:
+                headers["Content-Bbox"] = ",".join(map(str, image.bounds))
+            if uri := CRS_to_uri(image.crs):
+                headers["Content-Crs"] = f"<{uri}>"
+            if OptionalHeader.projjson_crs in self.optional_headers:
+                headers["Content-Crs-JSON"] = json.dumps(
+                    image.crs.to_dict(projjson=True)
                 )
 
             return Response(content, media_type=media_type, headers=headers)
@@ -1351,17 +1369,21 @@ class AsyncMosaicTilerFactory(MosaicTilerFactory):
                 ):
                     headers["X-Mosaic"] = f"method;{m}, found; {c}, used; {u}"
 
-            if image.bounds is not None:
-                headers["Content-Bbox"] = ",".join(map(str, image.bounds))
-            if uri := CRS_to_uri(image.crs):
-                headers["Content-Crs"] = f"<{uri}>"
-
             if (
                 OptionalHeader.server_timing in self.optional_headers
                 and image.metadata.get("timings")
             ):
                 headers["Server-Timing"] = ", ".join(
                     [f"{name};dur={time}" for (name, time) in image.metadata["timings"]]
+                )
+
+            if image.bounds is not None:
+                headers["Content-Bbox"] = ",".join(map(str, image.bounds))
+            if uri := CRS_to_uri(image.crs):
+                headers["Content-Crs"] = f"<{uri}>"
+            if OptionalHeader.projjson_crs in self.optional_headers:
+                headers["Content-Crs-JSON"] = json.dumps(
+                    image.crs.to_dict(projjson=True)
                 )
 
             return Response(content, media_type=media_type, headers=headers)
