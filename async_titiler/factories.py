@@ -46,6 +46,8 @@ from titiler.core.utils import (
     tms_limits,
 )
 
+from .tms import _pyproj_crs_to_tms_crs, tms_from_dataset
+
 logger = logging.getLogger(__name__)
 
 Info: TypeAlias = BaseInfo | GeoZarrInfo
@@ -244,7 +246,7 @@ class AsyncTilerFactory(TilerFactory):
     def tilesets(self):  # noqa: C901
         """Register OGC tilesets endpoints."""
 
-        available_tms = tuple(self.supported_tms.list())
+        available_tms = tuple(self.supported_tms.list()) + ("Local",)
 
         @self.router.get(
             "/tiles",
@@ -294,12 +296,17 @@ class AsyncTilerFactory(TilerFactory):
             attribution = os.environ.get("TITILER_DEFAULT_ATTRIBUTION")
 
             tilesets: list[dict[str, Any]] = []
-            for tms in self.supported_tms.list():
+            for tms in available_tms:
+                if tms == "Local":
+                    crs = _pyproj_crs_to_tms_crs(src_dst.input.crs)
+                else:
+                    crs = self.supported_tms.get(tms).crs
+
                 tileset: dict[str, Any] = {
                     "title": f"tileset tiled using {tms} TileMatrixSet",
                     "attribution": attribution,
                     "dataType": "map",
-                    "crs": self.supported_tms.get(tms).crs,
+                    "crs": crs,
                     "boundingBox": collection_bbox,
                     "links": [
                         {
@@ -407,7 +414,11 @@ class AsyncTilerFactory(TilerFactory):
             ] = None,
         ):
             """Retrieve the raster tileset metadata for the specified dataset and tiling scheme (tile matrix set)."""
-            tms = self.supported_tms.get(tileMatrixSetId)
+            if tileMatrixSetId == "Local":
+                tms = tms_from_dataset(dataset)
+            else:
+                tms = self.supported_tms.get(tileMatrixSetId)
+
             src_dst = self.reader(dataset, tms=tms, **reader_params.as_dict())
             bounds = src_dst.get_geographic_bounds(tms.rasterio_geographic_crs)
             minzoom = minzoom if minzoom is not None else src_dst.minzoom
@@ -523,6 +534,8 @@ class AsyncTilerFactory(TilerFactory):
     def map_viewer(self):  # noqa: C901
         """Register /map.html endpoint."""
 
+        available_tms = tuple(self.supported_tms.list()) + ("Local",)
+
         @self.router.get(
             "/{tileMatrixSetId}/map.html",
             response_class=HTMLResponse,
@@ -531,7 +544,7 @@ class AsyncTilerFactory(TilerFactory):
         def map_viewer(
             request: Request,
             tileMatrixSetId: Annotated[
-                Literal[tuple(self.supported_tms.list())],
+                Literal[available_tms],
                 Path(
                     description="Identifier selecting one of the TileMatrixSetId supported."
                 ),
@@ -564,6 +577,11 @@ class AsyncTilerFactory(TilerFactory):
             render_params=Depends(self.render_dependency),
         ):
             """Return TileJSON document for a dataset."""
+            if tileMatrixSetId == "Local":
+                tms = tms_from_dataset(dataset)
+            else:
+                tms = self.supported_tms.get(tileMatrixSetId)
+
             tilejson_url = self.url_for(
                 request, "tilejson", tileMatrixSetId=tileMatrixSetId
             )
@@ -592,7 +610,6 @@ class AsyncTilerFactory(TilerFactory):
                 ]
                 point_url += f"?{urlencode(qs)}"
 
-            tms = self.supported_tms.get(tileMatrixSetId)
             return self.templates.TemplateResponse(
                 request,
                 name="map.html",
@@ -611,7 +628,7 @@ class AsyncTilerFactory(TilerFactory):
     def tile(self):  # noqa: C901
         """Register /tiles endpoint."""
 
-        available_tms = tuple(self.supported_tms.list())
+        available_tms = tuple(self.supported_tms.list()) + ("Local",)
 
         @self.router.get(
             "/tiles/{tileMatrixSetId}/{z}/{x}/{y}",
@@ -668,7 +685,10 @@ class AsyncTilerFactory(TilerFactory):
             render_params=Depends(self.render_dependency),
         ):
             """Create map tile from a dataset."""
-            tms = self.supported_tms.get(tileMatrixSetId)
+            if tileMatrixSetId == "Local":
+                tms = tms_from_dataset(dataset)
+            else:
+                tms = self.supported_tms.get(tileMatrixSetId)
 
             src_dst = self.reader(dataset, tms=tms, **reader_params.as_dict())
             image = await src_dst.tile(
@@ -707,6 +727,8 @@ class AsyncTilerFactory(TilerFactory):
     def tilejson(self):  # noqa: C901
         """Register /tilejson.json endpoint."""
 
+        available_tms = tuple(self.supported_tms.list()) + ("Local",)
+
         @self.router.get(
             "/{tileMatrixSetId}/tilejson.json",
             response_model=TileJSON,
@@ -717,7 +739,7 @@ class AsyncTilerFactory(TilerFactory):
         async def tilejson(
             request: Request,
             tileMatrixSetId: Annotated[
-                Literal[tuple(self.supported_tms.list())],
+                Literal[available_tms],
                 Path(
                     description="Identifier selecting one of the TileMatrixSetId supported."
                 ),
@@ -750,6 +772,11 @@ class AsyncTilerFactory(TilerFactory):
             render_params=Depends(self.render_dependency),
         ):
             """Return TileJSON document for a dataset."""
+            if tileMatrixSetId == "Local":
+                tms = tms_from_dataset(dataset)
+            else:
+                tms = self.supported_tms.get(tileMatrixSetId)
+
             route_params = {
                 "z": "{z}",
                 "x": "{x}",
@@ -775,7 +802,6 @@ class AsyncTilerFactory(TilerFactory):
                 qs.append(("tilesize", str(tilesize)))
             tiles_url += f"?{urlencode(qs)}"
 
-            tms = self.supported_tms.get(tileMatrixSetId)
             src_dst = self.reader(dataset, tms=tms, **reader_params.as_dict())
             body = {
                 "bounds": src_dst.get_geographic_bounds(tms.rasterio_geographic_crs),
