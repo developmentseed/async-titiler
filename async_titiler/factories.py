@@ -560,7 +560,7 @@ class AsyncTilerFactory(TilerFactory):
             return data
 
         @self.router.get(
-            "/tileMatrixSet",
+            "/LocalTileMatrixSet",
             response_model=TileMatrixSet,
             response_model_exclude_none=True,
             summary="Retrieve the definition of Local TileMatrixSet tiling scheme (tile matrix set).",
