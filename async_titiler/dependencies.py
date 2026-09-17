@@ -3,31 +3,29 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
 
 from fastapi import Query
 
 from titiler.core.dependencies import DefaultDependency, ExpressionParams
 
-from .io import _get_geotiff, _get_geozarr
-
-if TYPE_CHECKING:
-    import zarr
-    from async_geotiff import GeoTIFF
+from .io import Dataset, _get_geotiff, _get_geozarr
 
 
 async def GeoTIFFPathParams(
     url: Annotated[str, Query(description="GeoTIFF file URL")],
-) -> GeoTIFF:
+) -> Dataset:
     """Create dataset path from args"""
-    return await _get_geotiff(url)
+    geotiff = await _get_geotiff(url)
+    return Dataset(url=url, dataset=geotiff)
 
 
 async def GeoZARRPathParams(
     url: Annotated[str, Query(description="GeoZarr store URL")],
-) -> zarr.AsyncGroup:
+) -> Dataset:
     """Create dataset path from args"""
-    return await _get_geozarr(url)
+    geozarr = await _get_geozarr(url)
+    return Dataset(url=url, dataset=geozarr)
 
 
 @dataclass
