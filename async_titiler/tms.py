@@ -3,17 +3,25 @@
 from __future__ import annotations
 
 import math
+from threading import Lock
 from typing import TYPE_CHECKING, Any
 
 from async_geotiff import GeoTIFF
+from cachetools import TTLCache, cached
+from cachetools.keys import hashkey
 from morecantile.models import CRS_to_uri, TileMatrixSet, TMSBoundingBox
 from morecantile.utils import meters_per_unit
 from pyproj import CRS as pyprojCRS
 from pyproj.exceptions import CRSError
 
+from .io import Dataset
+
 if TYPE_CHECKING:
     import zarr
     from async_geotiff import GeoTIFF
+
+
+ttl_cache: TTLCache = TTLCache(maxsize=512, ttl=300)
 
 
 def _pyproj_crs_to_tms_crs(crs: pyprojCRS) -> str | dict:
@@ -33,25 +41,31 @@ def _pyproj_crs_to_tms_crs(crs: pyprojCRS) -> str | dict:
     return crs_data
 
 
-# TODO: add cache
-def tms_from_dataset(dataset: GeoTIFF | zarr.AsyncGroup) -> TileMatrixSet:
+@cached(
+    ttl_cache,
+    key=lambda dst: hashkey(dst.url),
+    lock=Lock(),
+)
+def tms_from_dataset(dst: Dataset) -> TileMatrixSet:
     """Return a TileMatrixSet from a Dataset."""
-    if isinstance(dataset, GeoTIFF):
-        if dataset.crs is None:
+    if isinstance(dst.dataset, GeoTIFF):
+        if dst.dataset.crs is None:
             raise ValueError("GeoTIFF has no CRS")
 
-        if dataset.bounds is None:
+        if dst.dataset.bounds is None:
             raise ValueError("GeoTIFF has no bounds")
 
-        if dataset.transform is None:
+        if dst.dataset.transform is None:
             raise ValueError("GeoTIFF has no transform")
 
-        crs_data = _pyproj_crs_to_tms_crs(dataset.crs)
-        mpu = meters_per_unit(dataset.crs)
+        crs_data = _pyproj_crs_to_tms_crs(dst.dataset.crs)
+        mpu = meters_per_unit(dst.dataset.crs)
         screen_pixel_size = 0.28e-3
 
         matrices = []
-        for level, ovr in enumerate(list(reversed(dataset.overviews)) + [dataset]):
+        for level, ovr in enumerate(
+            list(reversed(dst.dataset.overviews)) + [dst.dataset]
+        ):
             matrix = {
                 "id": str(level),
                 "scaleDenominator": ovr.transform.a * mpu / screen_pixel_size,
@@ -66,17 +80,17 @@ def tms_from_dataset(dataset: GeoTIFF | zarr.AsyncGroup) -> TileMatrixSet:
             matrices.append(matrix)
 
         return TileMatrixSet(
-            id="Native",
+            id="LocalTileMatrixSet",
             orderedAxes=["X", "Y"],
             crs=crs_data,
             boundingBox=TMSBoundingBox(
-                lowerLeft=(dataset.bounds[0], dataset.bounds[1]),
-                upperRight=(dataset.bounds[2], dataset.bounds[3]),
+                lowerLeft=(dst.dataset.bounds[0], dst.dataset.bounds[1]),
+                upperRight=(dst.dataset.bounds[2], dst.dataset.bounds[3]),
             ),
             tileMatrices=matrices,
         )
 
-    elif isinstance(dataset, zarr.AsyncGroup):
+    elif isinstance(dst.dataset, zarr.AsyncGroup):
         pass
 
-    raise ValueError(f"Unsupported dataset type: {type(dataset)}")
+    raise ValueError(f"Unsupported dataset type: {type(dst.dataset)}")

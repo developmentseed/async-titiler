@@ -1,0 +1,356 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>TiTiler Map Viewer</title>
+    <meta
+      name="viewport"
+      content="initial-scale=1,maximum-scale=1,user-scalable=no"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css"
+    />
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background-color: #e5e5e5;
+      }
+      #map {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 100%;
+      }
+      .fixed-bottom {
+          position: absolute;
+          left: 0;
+          bottom: 0;
+          z-index: 1000;
+      }
+      .info-panel {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 1000;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-family: sans-serif;
+        font-size: 12px;
+        max-width: 280px;
+      }
+      .info-panel p {
+        margin: 2px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <div class="info-panel" id="info-panel">
+      <p>
+        <label>
+          <input type="radio" name="display-mode" value="gray" checked />
+          Single band
+        </label>
+        <label>
+          <input type="radio" name="display-mode" value="rgb" />
+          RGB combination
+        </label>
+      </p>
+      <div id="gray-controls">
+        <label for="band-select"><strong>Band:</strong></label>
+        <select id="band-select"></select>
+      </div>
+      <div id="rgb-controls" style="display: none;">
+        <label for="band-select-r"><strong>R:</strong></label>
+        <select id="band-select-r"></select>
+        <label for="band-select-g"><strong>G:</strong></label>
+        <select id="band-select-g"></select>
+        <label for="band-select-b"><strong>B:</strong></label>
+        <select id="band-select-b"></select>
+      </div>
+      <p id="status">Loading tiles…</p>
+    </div>
+    <div class="fixed-bottom">
+      <div style="padding: 10px;">
+        <a href="https://www.developmentseed.org/" target="_blank">
+          <img width="200" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+CjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+Cjxzdmcgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDE4OCAzMiIgdmVyc2lvbj0iMS4xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB4bWw6c3BhY2U9InByZXNlcnZlIiB4bWxuczpzZXJpZj0iaHR0cDovL3d3dy5zZXJpZi5jb20vIiBzdHlsZT0iZmlsbC1ydWxlOmV2ZW5vZGQ7Y2xpcC1ydWxlOmV2ZW5vZGQ7c3Ryb2tlLWxpbmVqb2luOnJvdW5kO3N0cm9rZS1taXRlcmxpbWl0OjI7Ij4KICAgIDxyZWN0IGlkPSJob3ItLXBvcyIgeD0iMCIgeT0iMCIgd2lkdGg9IjE4OCIgaGVpZ2h0PSIzMiIgc3R5bGU9ImZpbGw6bm9uZTsiLz4KICAgIDxnIGlkPSJob3ItLXBvczEiIHNlcmlmOmlkPSJob3ItLXBvcyI+CiAgICAgICAgPGcgaWQ9InRleHQiPgogICAgICAgICAgICA8cGF0aCBkPSJNNDksNkw0OSwxMC45QzQ5LDEwLjggNDguMiwxMC44IDQ3LjksMTAuN0M0Ny42LDEwLjcgNDcuMywxMC42IDQ2LjgsMTAuNkM0NiwxMC42IDQ1LjIsMTAuNyA0NC42LDExQzQ0LDExLjMgNDMuNSwxMS43IDQzLjEsMTIuMkM0Mi43LDEyLjcgNDIuNCwxMy40IDQyLjIsMTQuMkM0Mi4xLDE1IDQyLDE1LjkgNDIsMTYuOEM0MiwxOC43IDQyLjMsMjAuMiA0MywyMS4yQzQzLjcsMjIuMiA0NC43LDIyLjcgNDUuOSwyMi43QzQ2LjcsMjIuNyA0Ny4zLDIyLjYgNDcuOCwyMi4zQzQ4LjMsMjIgNDguNywyMS44IDQ5LjEsMjEuMUw0OS4yLDIyLjlMNTEsMjIuOUw1MSw2TDQ5LDZaTTQ5LDE3LjVDNDksMTggNDguOSwxOC41IDQ4LjgsMTlDNDguNywxOS41IDQ4LjUsMTkuOSA0OC4yLDIwLjJDNDgsMjAuNSA0Ny43LDIwLjggNDcuMywyMUM0NywyMS4yIDQ2LjYsMjEuMyA0Ni4yLDIxLjNDNDUuNCwyMS4zIDQ0LjgsMjAuOSA0NC40LDIwLjFDNDQsMTkuMyA0My44LDE4LjIgNDMuOCwxNi42QzQzLjgsMTUuMSA0NCwxNCA0NC41LDEzLjJDNDQuOSwxMi40IDQ1LjcsMTIuMSA0Ni43LDEyLjFDNDcuMiwxMi4xIDQ3LjYsMTIuMSA0OCwxMi4yQzQ4LjQsMTIuMyA0OSwxMi40IDQ5LDEyLjVMNDksMTcuNVpNNTguOCwyMi4zQzU4LjEsMjIuNiA1Ny4zLDIyLjggNTYuNSwyMi44QzU1LDIyLjggNTMuOSwyMi40IDUzLjIsMjEuNUM1Mi41LDIwLjYgNTIuMSwxOS4yIDUyLjEsMTcuM0M1Mi4xLDE1LjEgNTIuNSwxMy40IDUzLjMsMTIuM0M1NC4xLDExLjIgNTUuMiwxMC42IDU2LjYsMTAuNkM1OCwxMC42IDU5LDExLjEgNTkuOCwxMi4xQzYwLjUsMTMuMSA2MC44LDE0LjcgNjAuNywxNi44TDU0LDE2LjhMNTQsMTdDNTQsMTguNiA1NC4yLDE5LjcgNTQuNywyMC40QzU1LjIsMjEuMSA1NS44LDIxLjQgNTYuNywyMS40QzU3LjIsMjEuNCA1Ny44LDIxLjMgNTguMywyMS4xQzU4LjgsMjAuOSA1OS40LDIwLjYgNjAuMSwyMC4xTDYwLjgsMjEuM0M2MC4xLDIxLjcgNTkuNSwyMiA1OC44LDIyLjNaTTU4LjIsMTIuOUM1Ny44LDEyLjMgNTcuMiwxMiA1Ni41LDEyQzU1LjgsMTIgNTUuMiwxMi4zIDU0LjgsMTIuOUM1NC40LDEzLjUgNTQuMiwxNC40IDU0LjEsMTUuNUw1OC44LDE1LjVDNTguOCwxNC40IDU4LjYsMTMuNSA1OC4yLDEyLjlaTTY5LjIsMTMuNkM2OSwxNC41IDY4LjcsMTUuNCA2OC40LDE2LjRDNjguMSwxNy4zIDY3LjgsMTguMyA2Ny41LDE5LjRDNjcuMiwyMC40IDY2LjksMjEuNSA2Ni41LDIyLjZMNjQuNywyMi42QzY0LjMsMjEuNCA2NCwyMC4zIDYzLjYsMTkuM0w2Mi43LDE2LjNDNjIuNCwxNS40IDYyLjIsMTQuNCA2MS45LDEzLjZDNjEuNywxMi43IDYxLjUsMTEuOCA2MS4zLDExTDYzLDExTDY0LjIsMTUuOEM2NC42LDE3LjQgNjUuMSwxOSA2NS42LDIwLjdMNjYuOSwxNS45QzY3LjMsMTQuMyA2Ny43LDEyLjcgNjguMSwxMUw2OS43LDExQzY5LjcsMTEuOCA2OS41LDEyLjcgNjkuMiwxMy42Wk03Ny4xLDIyLjNDNzYuNCwyMi42IDc1LjYsMjIuOCA3NC44LDIyLjhDNzMuMywyMi44IDcyLjIsMjIuNCA3MS41LDIxLjVDNzAuOCwyMC42IDcwLjQsMTkuMiA3MC40LDE3LjNDNzAuNCwxNS4xIDcwLjgsMTMuNCA3MS42LDEyLjNDNzIuNCwxMS4yIDczLjUsMTAuNiA3NC45LDEwLjZDNzYuMywxMC42IDc3LjMsMTEuMSA3OC4xLDEyLjFDNzguOCwxMy4xIDc5LjEsMTQuNyA3OSwxNi44TDcyLjMsMTYuOEw3Mi4zLDE3QzcyLjMsMTguNiA3Mi41LDE5LjcgNzMsMjAuNEM3My41LDIxLjEgNzQuMSwyMS40IDc1LDIxLjRDNzUuNSwyMS40IDc2LjEsMjEuMyA3Ni42LDIxLjFDNzcuMSwyMC45IDc3LjcsMjAuNiA3OC40LDIwLjFMNzkuMSwyMS4zQzc4LjQsMjEuNyA3Ny44LDIyIDc3LjEsMjIuM1pNNzYuNSwxMi45Qzc2LjEsMTIuMyA3NS41LDEyIDc0LjgsMTJDNzQuMSwxMiA3My41LDEyLjMgNzMuMSwxMi45QzcyLjcsMTMuNSA3Mi41LDE0LjQgNzIuNCwxNS41TDc3LDE1LjVDNzcuMSwxNC40IDc2LjksMTMuNSA3Ni41LDEyLjlaTTgwLjUsMjIuNkw4MC41LDYuNUw4Mi4yLDYuNUw4Mi4yLDIyLjZMODAuNSwyMi42Wk04OC4xLDIyLjhDODYuNiwyMi44IDg1LjUsMjIuMyA4NC44LDIxLjRDODQuMSwyMC40IDgzLjcsMTguOSA4My43LDE2LjlDODMuNywxNC44IDg0LjEsMTMuMyA4NC44LDEyLjJDODUuNSwxMS4yIDg2LjcsMTAuNyA4OC4zLDEwLjdDODkuOCwxMC43IDkwLjksMTEuMiA5MS42LDEyLjJDOTIuMywxMy4yIDkyLjYsMTQuNyA5Mi42LDE2LjdDOTIuNiwyMC44IDkxLjEsMjIuOCA4OC4xLDIyLjhaTTkwLjIsMTMuMkM4OS44LDEyLjQgODkuMSwxMiA4OC4xLDEyQzg3LjIsMTIgODYuNiwxMi40IDg2LjIsMTMuMUM4NS44LDEzLjkgODUuNiwxNSA4NS42LDE2LjZDODUuNiwxOC4zIDg1LjgsMTkuNSA4Ni4yLDIwLjJDODYuNiwyMC45IDg3LjMsMjEuMyA4OC4yLDIxLjNDODkuOCwyMS4zIDkwLjcsMTkuOCA5MC43LDE2LjdDOTAuNywxNS4xIDkwLjUsMTMuOSA5MC4yLDEzLjJaTTEwMi40LDIxLjFDMTAxLjYsMjIuMiAxMDAuNCwyMi44IDk4LjcsMjIuOEM5OC4zLDIyLjggOTcuOSwyMi44IDk3LjYsMjIuN0M5Ny4zLDIyLjcgOTcsMjIuNiA5Ni41LDIyLjVMOTYuNSwyNi40TDk0LjgsMjYuNEw5NC44LDEwLjlMOTYuMywxMC45TDk2LjQsMTIuNEM5Ni44LDExLjcgOTcuMiwxMS4zIDk3LjcsMTFDOTguMiwxMC43IDk4LjgsMTAuNiA5OS42LDEwLjZDMTAwLjksMTAuNiAxMDEuOCwxMS4xIDEwMi41LDEyLjFDMTAzLjIsMTMuMSAxMDMuNSwxNC42IDEwMy41LDE2LjVDMTAzLjUsMTguNSAxMDMuMiwyMCAxMDIuNCwyMS4xWk0xMDEuMSwxMy4zQzEwMC43LDEyLjUgMTAwLjEsMTIuMSA5OS4zLDEyLjFDOTguOSwxMi4xIDk4LjUsMTIuMiA5OC4yLDEyLjRDOTcuOSwxMi42IDk3LjYsMTIuOSA5Ny40LDEzLjJDOTcuMiwxMy41IDk3LDEzLjkgOTYuOCwxNC40Qzk2LjYsMTQuOSA5Ni42LDE1LjMgOTYuNiwxNS45TDk2LjYsMjFDOTYuOSwyMS4xIDk3LjIsMjEuMiA5Ny42LDIxLjNDOTgsMjEuNCA5OC40LDIxLjQgOTguOSwyMS40Qzk5LjksMjEuNCAxMDAuNiwyMSAxMDEuMSwyMC4zQzEwMS42LDE5LjYgMTAxLjgsMTguNCAxMDEuOCwxNi45QzEwMS43LDE1LjIgMTAxLjUsMTQgMTAxLjEsMTMuM1pNMTE3LjYsMjIuNkwxMTcuNiwxNC43QzExNy42LDEzLjkgMTE3LjUsMTMuMiAxMTcuNCwxMi43QzExNy4zLDEyLjIgMTE2LjksMTIgMTE2LjMsMTJDMTE1LjksMTIgMTE1LjUsMTIuMSAxMTUuMSwxMi40QzExNC43LDEyLjcgMTE0LjIsMTMuMSAxMTMuNSwxMy42TDExMy41LDIyLjVMMTExLjgsMjIuNUwxMTEuOCwxNC43QzExMS44LDEzLjkgMTExLjcsMTMuMiAxMTEuNiwxMi43QzExMS41LDEyLjIgMTExLjEsMTIgMTEwLjUsMTJDMTEwLjEsMTIgMTA5LjcsMTIuMSAxMDkuMywxMi40QzEwOC45LDEyLjcgMTA4LjQsMTMuMSAxMDcuNywxMy42TDEwNy43LDIyLjVMMTA2LDIyLjVMMTA2LDEwLjlMMTA3LjUsMTAuOUwxMDcuNiwxMi4zTDEwOS4zLDExLjFDMTA5LjgsMTAuOCAxMTAuNCwxMC42IDExMSwxMC42QzExMS43LDEwLjYgMTEyLjIsMTAuOCAxMTIuNSwxMS4xQzExMi44LDExLjQgMTEzLjEsMTEuOCAxMTMuMywxMi40QzExMy45LDExLjkgMTE0LjUsMTEuNSAxMTUuMSwxMS4yQzExNS43LDEwLjkgMTE2LjIsMTAuNyAxMTYuOCwxMC43QzExNy44LDEwLjcgMTE4LjQsMTEgMTE4LjgsMTEuNkMxMTkuMiwxMi4yIDExOS4zLDEzLjEgMTE5LjMsMTQuNEwxMTkuMywyMi42TDExNy42LDIyLjZaTTEyNy41LDIyLjNDMTI2LjgsMjIuNiAxMjYsMjIuOCAxMjUuMiwyMi44QzEyMy43LDIyLjggMTIyLjYsMjIuNCAxMjEuOSwyMS41QzEyMS4yLDIwLjYgMTIwLjgsMTkuMiAxMjAuOCwxNy4zQzEyMC44LDE1LjEgMTIxLjIsMTMuNCAxMjIsMTIuM0MxMjIuOCwxMS4yIDEyMy45LDEwLjYgMTI1LjMsMTAuNkMxMjYuNywxMC42IDEyNy43LDExLjEgMTI4LjUsMTIuMUMxMjkuMiwxMy4xIDEyOS41LDE0LjcgMTI5LjQsMTYuOEwxMjIuNywxNi44TDEyMi43LDE3QzEyMi43LDE4LjYgMTIyLjksMTkuNyAxMjMuNCwyMC40QzEyMy45LDIxLjEgMTI0LjUsMjEuNCAxMjUuNCwyMS40QzEyNS45LDIxLjQgMTI2LjUsMjEuMyAxMjcsMjEuMUMxMjcuNSwyMC45IDEyOC4xLDIwLjYgMTI4LjgsMjAuMUwxMjkuNSwyMS4zQzEyOC44LDIxLjcgMTI4LjEsMjIgMTI3LjUsMjIuM1pNMTI2LjgsMTIuOUMxMjYuNCwxMi4zIDEyNS44LDEyIDEyNS4xLDEyQzEyNC40LDEyIDEyMy44LDEyLjMgMTIzLjQsMTIuOUMxMjMsMTMuNSAxMjIuOCwxNC40IDEyMi43LDE1LjVMMTI3LjQsMTUuNUMxMjcuNCwxNC40IDEyNy4yLDEzLjUgMTI2LjgsMTIuOVpNMTM2LjksMjIuNUwxMzYuOSwxNC43QzEzNi45LDEzLjkgMTM2LjgsMTMuMiAxMzYuNiwxMi43QzEzNi40LDEyLjIgMTM2LDEyIDEzNS40LDEyQzEzNSwxMiAxMzQuNiwxMi4xIDEzNC4yLDEyLjRDMTMzLjgsMTIuNyAxMzMuMiwxMy4xIDEzMi42LDEzLjZMMTMyLjYsMjIuNUwxMzAuOSwyMi41TDEzMC45LDEwLjlMMTMyLjQsMTAuOUwxMzIuNSwxMi4zQzEzMy4xLDExLjkgMTMzLjcsMTEuNSAxMzQuMiwxMS4xQzEzNC44LDEwLjggMTM1LjMsMTAuNiAxMzUuOSwxMC42QzEzNi45LDEwLjYgMTM3LjYsMTAuOSAxMzcuOSwxMS41QzEzOC4zLDEyLjEgMTM4LjUsMTMgMTM4LjUsMTQuM0wxMzguNSwyMi41TDEzNi45LDIyLjVaTTE0NC43LDIyLjhDMTQ0LjEsMjIuOCAxNDMuNSwyMi43IDE0My4xLDIyLjZDMTQyLjcsMjIuNSAxNDIuNCwyMi4yIDE0Mi4yLDIxLjlDMTQyLDIxLjYgMTQxLjgsMjEuMiAxNDEuOCwyMC42QzE0MS43LDIwLjEgMTQxLjcsMTkuNCAxNDEuNywxOC43TDE0MS43LDEyLjNMMTQwLDEyLjNMMTQwLDEwLjlMMTQxLjcsMTAuOUwxNDEuNyw3LjdMMTQzLjQsNy41TDE0My40LDEwLjlMMTQ1LjgsMTAuOUwxNDUuNywxMi4zTDE0My41LDEyLjNMMTQzLjUsMTkuOEMxNDMuNSwyMC4yIDE0My42LDIwLjUgMTQzLjcsMjAuN0MxNDMuOCwyMC45IDE0NCwyMS4xIDE0NC4yLDIxLjJDMTQ0LjQsMjEuMyAxNDQuNywyMS40IDE0NS4xLDIxLjRMMTQ1LjYsMjEuNEwxNDYuMSwyMS4zTDE0Ni4zLDIyLjdDMTQ1LjcsMjIuNyAxNDUuMiwyMi44IDE0NC43LDIyLjhaIiBzdHlsZT0iZmlsbDpyZ2IoNjgsNjMsNjMpO2ZpbGwtcnVsZTpub256ZXJvOyIvPgogICAgICAgIDwvZz4KICAgICAgICA8ZyBpZD0ic3ltYm9sIj4KICAgICAgICAgICAgPHBhdGggaWQ9InN1cmZhY2UiIGQ9Ik0zMCwwTDIsMEMwLjksMCAwLDAuOSAwLDJMMCwzMEMwLDMxLjEgMC45LDMyIDIsMzJMMzAsMzJDMzEuMSwzMiAzMiwzMS4xIDMyLDMwTDMyLDJDMzIsMC45IDMxLjEsMCAzMCwwWiIgc3R5bGU9ImZpbGw6cmdiKDIwOCw2NiwwKTtmaWxsLXJ1bGU6bm9uemVybzsiLz4KICAgICAgICAgICAgPGcgaWQ9InNoYXBlIiB0cmFuc2Zvcm09Im1hdHJpeCgwLjkyNTM0MiwwLDAsMC45MjUzNDIsMS4xOTQ1MywyLjM4OTA2KSI+CiAgICAgICAgICAgICAgICA8cGF0aCBkPSJNMTguMSwyNy4yQzE4LjEsMjYuNiAxOC4zLDI2IDE4LjUsMjUuNEMxNy45LDI1LjkgMTcuNywyNi41IDE3LjUsMjcuM0MxNy42LDI2LjQgMTgsMjAuNCAxOCwyMC4xQzE5LjUsMTUuNyAxOC44LDIuNyAyMC44LDFDMTguNiwxLjQgMTcuOCwzLjcgMTcuMSw1LjVDMTYuNCwzLjQgMTcsMiAxNC42LDEuMkMxNi41LDIuOCAxNi4xLDQuMiAxNi41LDYuNEMxNS40LDQuOSAxNS43LDMuMSAxNC40LDEuNkMxNCwxLjIgMTIuOCwwLjMgMTIuOCwwLjNDMTIuOCwwLjQgMTMuOCwyLjMgMTQsMy40QzE0LjIsNC40IDE0LjYsNi41IDE0LjYsNy4zQzE0LjgsMTEuNSAxNS44LDE1LjYgMTYuNiwxOS44QzE2LjcsMjAuNSAxNy4xLDIyLjYgMTcuMSwyMi42TDE3LjIsMjMuNUMxNy4xLDIyLjkgMTYuOSwyMi40IDE2LjksMjIuMkMxNi43LDIxLjYgMTYuMiwyMCAxNiwxOS4zQzE0LjIsMTUuNiAxMSw4LjUgNi42LDcuNEM5LjEsOS42IDExLjcsMTIuNSAxMi4zLDE1LjNDMTEsMTMuNCA1LjgsOS41IDMuNiw4QzcuNiwxMi4xIDEwLjgsMTYuNCAxNC4zLDIxQzE1LjMsMjIuMyAxNi42LDI1IDE2LjcsMjUuNkMxNi44LDI2IDE2LjgsMjcuNyAxNi45LDI4LjdDMTUsMjQgMTMuOSwyMS42IDEwLjMsMTkuNUM5LjcsMTkuMiA3LjgsMTguNSA3LjgsMTguNUM4LjcsMTkuNSA5LjcsMTkuNSAxMC41LDIwLjhDOC45LDE5LjcgNy4yLDE5LjUgNS4zLDE5LjVDMTEuMywyMi42IDE0LjUsMjMuNSAxNi41LDI5LjRDMTYuNywzMC40IDE2LjQsMzEgMTYuNCwzMkwxNy43LDMyTDE3LjcsMzAuNkMxNy44LDMwLjIgMTcuOCwyOC45IDE4LDI4LjZDMTguNiwyNyAxOS42LDI2LjMgMjEuMSwyNS4zQzE5LjcsMjUuOCAxOS4xLDI1LjYgMTguMSwyNy4yWk0yNCwxMy4yQzIzLjUsMTMuNyAyMiwxNS41IDIyLDE1LjVDMjIuMSwxMi45IDIyLjcsMTAuMSAyNC40LDguMUMyMi4xLDkuNiAyMC44LDEzLjQgMjAuMSwxNS43QzE5LjksMTYuNiAxNy4xLDIyIDE4LjQsMjQuOUMxOC42LDIzLjggMTkuMiwyMi44IDE5LjksMjEuOUMyMC4yLDIxLjUgMjEuNSwxOS40IDIyLjgsMTYuNUMyMy45LDEzLjYgMjUuOCwxMS44IDI4LjQsMTAuNEMyNi41LDEwLjcgMjUuNCwxMS44IDI0LDEzLjJaIiBzdHlsZT0iZmlsbDp3aGl0ZTtmaWxsLXJ1bGU6bm9uemVybzsiLz4KICAgICAgICAgICAgPC9nPgogICAgICAgIDwvZz4KICAgIDwvZz4KPC9zdmc+Cg=="
+            alt="Development Seed">
+        </a>
+      </div>
+    </div>
+    <script type="module">
+      import maplibregl from "https://esm.sh/maplibre-gl@4";
+      import { MapboxOverlay } from "https://esm.sh/@deck.gl/mapbox@9?bundle-deps&external=maplibre-gl";
+      import {
+        RasterTileLayer,
+        TileMatrixSetAdaptor,
+      } from "https://esm.sh/@developmentseed/deck.gl-raster@0.8.0-beta.2?bundle-deps";
+      import { CreateTexture } from "https://esm.sh/@developmentseed/deck.gl-raster@0.8.0-beta.2/gpu-modules?bundle-deps";
+      import proj4 from "https://esm.sh/proj4@2";
+      import NpyJs from "https://esm.sh/npyjs@0.6";
+
+      const npyParser = new NpyJs();
+      const status = document.getElementById("status");
+
+      // TMS + native-CRS <-> geographic/mercator conversion. The tiles are
+      // served in the dataset's own (native) CRS, not EPSG:3857, so both
+      // to/from 3857 and to/from 4326 proj4 conversions go through 4326.
+      const nativeProj4 = {{ tms.crs.to_proj4()|tojson }};
+      const toGeographic = proj4(nativeProj4, "EPSG:4326");
+      const to3857 = proj4("EPSG:4326", "EPSG:3857");
+
+      const projectTo4326 = (x, y) => toGeographic.forward([x, y]);
+      const projectFrom4326 = (x, y) => toGeographic.inverse([x, y]);
+      const projectTo3857 = (x, y) => to3857.forward(projectTo4326(x, y));
+      const projectFrom3857 = (x, y) => {
+        const [lon, lat] = to3857.inverse([x, y]);
+        return projectFrom4326(lon, lat);
+      };
+
+      const tms = {{ tms.model_dump(exclude_none=True, mode="json")|tojson }};
+      const xyBbox = {{ [tms.xy_bbox.left, tms.xy_bbox.bottom, tms.xy_bbox.right, tms.xy_bbox.top]|tojson }};
+      const [left, bottom, right, top] = xyBbox;
+      tms.boundingBox = {
+        lowerLeft: [left, bottom],
+        upperRight: [right, top],
+        crs: tms.crs,
+      };
+
+      const descriptor = new TileMatrixSetAdaptor(tms, {
+        projectTo3857,
+        projectFrom3857,
+        projectTo4326,
+        projectFrom4326,
+      });
+
+      const dtype_ranges = {
+        'int8': [-128, 127],
+        'uint8': [0, 255],
+        'uint16': [0, 65535],
+        'int16': [-32768, 32767],
+        'uint32': [0, 4294967295],
+        'int32': [-2147483648, 2147483647],
+        'float16': [-6.55040e+04, 6.55040e+04],
+        'float32': [-3.4028235e+38, 3.4028235e+38],
+        'float64': [-1.7976931348623157e+308, 1.7976931348623157e+308],
+        'int64': [-9223372036854775808, 9223372036854775807],
+        'uint64': [0, 18446744073709551615],
+      }
+
+      const tilesUrlTemplate = {{ tiles_url|tojson }};
+      const statistics = {{ statistics|tojson }};
+      const dataType = {{ info.dtype|tojson }};
+      const defaultRange = dtype_ranges[dataType] || [0, 255];
+
+      // `statistics` is keyed by rio-tiler band name (e.g. "b1", "b2", ...)
+      // in band order — that order gives us the (1-based) `bidx` the tile
+      // endpoint expects. Fall back to a single unnamed band if the reader
+      // reported none.
+      const statNames = Object.keys(statistics || {});
+      const bandList = statNames.length
+        ? statNames.map((name, i) => [
+            i + 1,
+            statistics[name].description || name,
+            name,
+          ])
+        : [[1, "band 1", "b1"]];
+
+      function rangeForBand(bandIdx) {
+        const entry = bandList[bandIdx - 1];
+        const name = entry ? entry[2] : undefined;
+        const stats = statistics && name ? statistics[name] : undefined;
+        const [bandMin, bandMax] = stats ? [stats.min, stats.max] : defaultRange;
+        return { bandMin, bandMax, range: bandMax - bandMin || 1 };
+      }
+
+      // `bandIdxList` is an array of 1-based band indices; the tile
+      // endpoint accepts repeated `bidx` params to select/reorder bands
+      // (single entry for grayscale, three for an RGB combination).
+      function tileUrl(z, x, y, bandIdxList) {
+        const url = tilesUrlTemplate
+          .replace("{z}", z)
+          .replace("{x}", x)
+          .replace("{y}", y);
+        const sep = url.includes("?") ? "&" : "?";
+        const bidx = bandIdxList.map((b) => `bidx=${b}`).join("&");
+        return `${url}${sep}${bidx}`;
+      }
+
+      // Stretch each requested band's raw values linearly into uint8 using
+      // its own min/max, packed into an interleaved RGBA buffer (A=255).
+      // With a single band, the value is replicated across R/G/B — a
+      // single-channel r8unorm texture would sample as (r, 0, 0, 1), i.e.
+      // render red instead of grayscale, so we always pack RGBA.
+      function stretchToRGBA(data, height, width, bandRanges) {
+        const pixelCount = height * width;
+        const out = new Uint8Array(pixelCount * 4);
+        const planes =
+          bandRanges.length === 1
+            ? [0, 0, 0]
+            : [0, 1, 2];
+        for (let i = 0; i < pixelCount; i++) {
+          for (let c = 0; c < 3; c++) {
+            const plane = planes[c];
+            const { bandMin, range } = bandRanges[plane];
+            const raw = data[plane * pixelCount + i];
+            const v = ((raw - bandMin) / range) * 255;
+            out[i * 4 + c] = Math.max(0, Math.min(255, v));
+          }
+          out[i * 4 + 3] = 255;
+        }
+        return out;
+      }
+
+      function makeGetTileData(bandIdxList) {
+        const bandRanges = bandIdxList.map(rangeForBand);
+        return async function getTileData(tile, options) {
+          const { device, signal } = options;
+          const { x, y, z } = tile.index;
+          const response = await fetch(tileUrl(z, x, y, bandIdxList), { signal });
+          if (!response.ok) {
+            throw new Error(
+              `tile ${z}/${x}/${y} ${response.status}: ${await response.text()}`,
+            );
+          }
+          const buffer = await response.arrayBuffer();
+          const parsed = npyParser.parse(buffer);
+          if (parsed.shape.length !== 3) {
+            throw new Error(
+              `Expected shape [B, H, W], got [${parsed.shape.join(", ")}]`,
+            );
+          }
+          const [, height, width] = parsed.shape;
+          const rgba = stretchToRGBA(parsed.data, height, width, bandRanges);
+          const texture = device.createTexture({
+            data: rgba,
+            format: "rgba8unorm",
+            width,
+            height,
+            sampler: { minFilter: "linear", magFilter: "linear" },
+          });
+          return { width, height, byteLength: rgba.byteLength, texture };
+        };
+      }
+
+      function renderTile(data) {
+        return {
+          renderPipeline: [
+            { module: CreateTexture, props: { textureName: data.texture } },
+          ],
+        };
+      }
+
+      const bounds = {{ bounds|tojson }};
+
+      const map = new maplibregl.Map({
+        container: "map",
+        style: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+        bounds: [
+          [bounds[0], bounds[1]],
+          [bounds[2], bounds[3]],
+        ],
+        fitBoundsOptions: { padding: 40 },
+      });
+
+      function populateBandSelect(select, defaultIdx) {
+        for (const [idx, description] of bandList) {
+          const option = document.createElement("option");
+          option.value = idx;
+          option.textContent = description || `band ${idx}`;
+          if (idx === defaultIdx) {
+            option.selected = true;
+          }
+          select.appendChild(option);
+        }
+      }
+
+      const bandSelect = document.getElementById("band-select");
+      const bandSelectR = document.getElementById("band-select-r");
+      const bandSelectG = document.getElementById("band-select-g");
+      const bandSelectB = document.getElementById("band-select-b");
+      const grayControls = document.getElementById("gray-controls");
+      const rgbControls = document.getElementById("rgb-controls");
+
+      // Default RGB pick: first three bands, repeating the last one if the
+      // dataset has fewer than three.
+      const rgbDefaults = [
+        bandList[0][0],
+        (bandList[1] || bandList[0])[0],
+        (bandList[2] || bandList[bandList.length - 1])[0],
+      ];
+
+      populateBandSelect(bandSelect, bandList[0][0]);
+      populateBandSelect(bandSelectR, rgbDefaults[0]);
+      populateBandSelect(bandSelectG, rgbDefaults[1]);
+      populateBandSelect(bandSelectB, rgbDefaults[2]);
+
+      function buildLayer() {
+        const mode = document.querySelector(
+          'input[name="display-mode"]:checked',
+        ).value;
+        const bandIdxList =
+          mode === "rgb"
+            ? [
+                Number(bandSelectR.value),
+                Number(bandSelectG.value),
+                Number(bandSelectB.value),
+              ]
+            : [Number(bandSelect.value)];
+
+        return new RasterTileLayer({
+          id: `async-titiler-raster-${mode}-${bandIdxList.join("-")}`,
+          tilesetDescriptor: descriptor,
+          getTileData: makeGetTileData(bandIdxList),
+          renderTile,
+          minZoom: {{ tms.minzoom }},
+          maxZoom: {{ tms.maxzoom }},
+        });
+      }
+
+      let overlay;
+
+      map.on("load", () => {
+        overlay = new MapboxOverlay({
+          interleaved: true,
+          layers: [buildLayer()],
+        });
+        map.addControl(overlay);
+        status.textContent = "";
+      });
+
+      function refreshLayer() {
+        if (overlay) {
+          overlay.setProps({ layers: [buildLayer()] });
+        }
+      }
+
+      for (const radio of document.querySelectorAll(
+        'input[name="display-mode"]',
+      )) {
+        radio.addEventListener("change", () => {
+          const mode = radio.value;
+          grayControls.style.display = mode === "gray" ? "" : "none";
+          rgbControls.style.display = mode === "rgb" ? "" : "none";
+          if (radio.checked) {
+            refreshLayer();
+          }
+        });
+      }
+
+      bandSelect.addEventListener("change", refreshLayer);
+      bandSelectR.addEventListener("change", refreshLayer);
+      bandSelectG.addEventListener("change", refreshLayer);
+      bandSelectB.addEventListener("change", refreshLayer);
+
+      map.on("error", (e) => {
+        status.textContent = `Error: ${e.error?.message || "unknown"}`;
+        console.error(e);
+      });
+    </script>
+  </body>
+</html>
