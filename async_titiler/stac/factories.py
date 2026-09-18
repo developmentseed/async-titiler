@@ -3,7 +3,7 @@
 import json
 import logging
 import os
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
 from typing import Annotated, Any, Literal, TypeAlias
 from urllib.parse import urlencode
 
@@ -76,9 +76,9 @@ MultiBaseInfoGeoJSON = Feature[Polygon | MultiPolygon, MultiBaseInfo]
 class AsyncMultiBaseTilerFactory(AsyncTilerFactory):
     """Custom Tiler Factory for MultiBaseReader classes."""
 
-    reader: type[AsyncMultiBaseReader] = AsyncSTACReader
+    reader: type[AsyncMultiBaseReader] = AsyncSTACReader  # type: ignore[override]
 
-    path_dependency: Callable[..., pystac.Item] = STACItemParams
+    path_dependency: Callable[..., Coroutine[Any, Any, pystac.Item]] = STACItemParams  # type: ignore[override]
 
     # Assets/Expression dependency
     layer_dependency: type[DefaultDependency] = AssetsExprParams
