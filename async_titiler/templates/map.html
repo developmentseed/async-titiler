@@ -168,35 +168,37 @@
         return { bandMin, bandMax, range: bandMax - bandMin || 1 };
       }
 
-      // `bandIdxList` is an array of 1-based band indices; the tile
-      // endpoint accepts repeated `bidx` params to select/reorder bands
-      // (single entry for grayscale, three for an RGB combination).
-      function tileUrl(z, x, y, bandIdxList) {
-        const url = tilesUrlTemplate
+      // No `bidx` here on purpose: every tile is fetched once with all of
+      // its bands, and the requested band(s) are sliced out of the decoded
+      // array after parsing (see `stretchToRGBA`). Because the URL is the
+      // same regardless of which bands are displayed, switching bands/mode
+      // re-uses the browser's own HTTP cache for tiles already fetched,
+      // instead of hitting the tiler again.
+      function tileUrl(z, x, y) {
+        return tilesUrlTemplate
           .replace("{z}", z)
           .replace("{x}", x)
           .replace("{y}", y);
-        const sep = url.includes("?") ? "&" : "?";
-        const bidx = bandIdxList.map((b) => `bidx=${b}`).join("&");
-        return `${url}${sep}${bidx}`;
       }
 
       // Stretch each requested band's raw values linearly into uint8 using
-      // its own min/max, packed into an interleaved RGBA buffer (A=255).
-      // With a single band, the value is replicated across R/G/B — a
-      // single-channel r8unorm texture would sample as (r, 0, 0, 1), i.e.
-      // render red instead of grayscale, so we always pack RGBA.
-      function stretchToRGBA(data, height, width, bandRanges) {
+      // its own min/max, picking the plane for band `bandIdx` (1-based)
+      // out of the full decoded band stack, packed into an interleaved
+      // RGBA buffer (A=255). With a single band, the value is replicated
+      // across R/G/B — a single-channel r8unorm texture would sample as
+      // (r, 0, 0, 1), i.e. render red instead of grayscale, so we always
+      // pack RGBA.
+      function stretchToRGBA(data, height, width, bandIdxList, bandRanges) {
         const pixelCount = height * width;
         const out = new Uint8Array(pixelCount * 4);
         const planes =
-          bandRanges.length === 1
-            ? [0, 0, 0]
-            : [0, 1, 2];
+          bandIdxList.length === 1
+            ? [bandIdxList[0], bandIdxList[0], bandIdxList[0]]
+            : bandIdxList;
         for (let i = 0; i < pixelCount; i++) {
           for (let c = 0; c < 3; c++) {
-            const plane = planes[c];
-            const { bandMin, range } = bandRanges[plane];
+            const plane = planes[c] - 1;
+            const { bandMin, range } = bandRanges[c];
             const raw = data[plane * pixelCount + i];
             const v = ((raw - bandMin) / range) * 255;
             out[i * 4 + c] = Math.max(0, Math.min(255, v));
@@ -207,11 +209,14 @@
       }
 
       function makeGetTileData(bandIdxList) {
-        const bandRanges = bandIdxList.map(rangeForBand);
+        const bandRanges =
+          bandIdxList.length === 1
+            ? [bandIdxList[0], bandIdxList[0], bandIdxList[0]].map(rangeForBand)
+            : bandIdxList.map(rangeForBand);
         return async function getTileData(tile, options) {
           const { device, signal } = options;
           const { x, y, z } = tile.index;
-          const response = await fetch(tileUrl(z, x, y, bandIdxList), { signal });
+          const response = await fetch(tileUrl(z, x, y), { signal });
           if (!response.ok) {
             throw new Error(
               `tile ${z}/${x}/${y} ${response.status}: ${await response.text()}`,
@@ -225,7 +230,13 @@
             );
           }
           const [, height, width] = parsed.shape;
-          const rgba = stretchToRGBA(parsed.data, height, width, bandRanges);
+          const rgba = stretchToRGBA(
+            parsed.data,
+            height,
+            width,
+            bandIdxList,
+            bandRanges,
+          );
           const texture = device.createTexture({
             data: rgba,
             format: "rgba8unorm",
