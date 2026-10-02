@@ -26,11 +26,12 @@ COG_URL_HTTP = "https://raw.githubusercontent.com/developmentseed/geotiff-test-d
 async def test_dataset_path_params_returns_geotiff(url):
     """GeoTIFFPathParams should return a GeoTIFF object."""
     result = await GeoTIFFPathParams(url=url)
-    assert isinstance(result, GeoTIFF)
-    assert result.bounds is not None
-    assert result.crs is not None
-    assert result.width > 0
-    assert result.height > 0
+    assert result.url == url
+    assert isinstance(result.dataset, GeoTIFF)
+    assert result.dataset.bounds is not None
+    assert result.dataset.crs is not None
+    assert result.dataset.width > 0
+    assert result.dataset.height > 0
 
 
 @pytest.mark.asyncio
