@@ -1587,6 +1587,15 @@ wheels = [
 ]
 
 [[package]]
+name = "isochron"
+version = "0.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/fd/42/4b78ba1d5d8bf33306c411b78a316f0a50c6951c51caa4d127794f17f791/isochron-0.1.0.tar.gz", hash = "sha256:5cc88c670f4d07e08552252b9c83b57539cf84d1361df89206ac3687c8f46337", size = 39110, upload-time = "2026-03-14T07:40:26.869Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/56/b5/a9333344453eec36a2d2178f8053a058190ce3ebdbe05cbdfceff9342834/isochron-0.1.0-py3-none-any.whl", hash = "sha256:15d72a6512b8a03aa2c0500eed065dcbb4c489d1daf5f9670b92e4dc0c91ecb5", size = 17932, upload-time = "2026-03-14T07:40:25.665Z" },
+]
+
+[[package]]
 name = "isoduration"
 version = "20.11.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3972,13 +3981,14 @@ wheels = [
 
 [[package]]
 name = "rio-tiler"
-version = "9.4.4"
+version = "9.4.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
     { name = "cachetools" },
     { name = "color-operations" },
     { name = "httpx2" },
+    { name = "isochron" },
     { name = "morecantile" },
     { name = "numexpr" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
@@ -3989,9 +3999,9 @@ dependencies = [
     { name = "rasterio", version = "1.5.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "typing-extensions", marker = "python_full_version < '3.15'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/93/f0/fede101fa64c0b26d901f4f7ceea4410c1995c45aca72e5a88ed0ecb33b0/rio_tiler-9.4.4.tar.gz", hash = "sha256:cfc274b65ca052daa9c4c39a5dd503e21d32a57704b343fdf009b3873d926283", size = 212937, upload-time = "2026-09-09T05:45:02.457Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/89/ba/915a62db3c19eb7ee9d9aff48bf3506c6361994aa615f7bddd32c518cca3/rio_tiler-9.4.9.tar.gz", hash = "sha256:03b95681c5099a7ff741954034174827960f12a8a6634635157c475984ceaae8", size = 215215, upload-time = "2026-10-02T22:22:03.076Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/77/f3/bcfa225f6c7c1c996476c41011d6e9e444d13a32d07912998bc8a41726b9/rio_tiler-9.4.4-py3-none-any.whl", hash = "sha256:83c95b5eb543b9c3347efc020edb4f403ebe424e6db72a3f02fc573ee785e119", size = 316593, upload-time = "2026-09-09T05:44:59.702Z" },
+    { url = "https://files.pythonhosted.org/packages/5a/34/939273a3c4b8bb03b1517f59eaf64720372dd8dbad17f023bf46184984fc/rio_tiler-9.4.9-py3-none-any.whl", hash = "sha256:29e236eadf05c8f33307d1212f51ee98ce2872cd697cec664c6113bc8a883300", size = 318594, upload-time = "2026-10-02T22:22:01.081Z" },
 ]
 
 [package.optional-dependencies]
