@@ -125,4 +125,6 @@ async def _get_geozarr(url: str) -> zarr.AsyncGroup:
         url += "/"
     store = await _get_store(url)
     zarr_store = ObjectStore(store=store, read_only=True)
-    return await zarr.api.asynchronous.open_group(store=zarr_store, mode="r")
+    return await zarr.api.asynchronous.open_group(
+        store=zarr_store, mode="r", zarr_format=3
+    )
