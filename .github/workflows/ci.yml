@@ -12,7 +12,7 @@ on:
     paths:
       # Only run test and docker publish if some code have changed
       - 'pyproject.toml'
-      - 'titiler/**'
+      - 'async-titiler/**'
       - '.pre-commit-config.yaml'
       - '.github/workflows/ci.yml'
       - 'uv.lock'
