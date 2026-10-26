@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import posixpath
 import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
@@ -24,6 +25,14 @@ except ImportError:
 
 if TYPE_CHECKING:
     from obstore.store import Store
+
+
+@dataclass
+class Dataset:
+    """Dataset class: url + GeoTIFF/zarr.AsyncGroup"""
+
+    url: str
+    dataset: GeoTIFF | zarr.AsyncGroup
 
 
 @AsyncTTL(time_to_live=300)
