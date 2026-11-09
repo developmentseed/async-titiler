@@ -55,7 +55,7 @@ class BackendParams(DefaultDependency):
         )
 
 
-VALID_ASSET_OPTIONS = {"bidx", "expression", "bands", "variables", "sel"}
+VALID_ASSET_OPTIONS = {"bidx", "expression", "bands", "variables", "sel", "reduce"}
 
 
 def _parse_option(key: str, value: str) -> tuple[str, Any]:
@@ -82,6 +82,9 @@ def _parse_option(key: str, value: str) -> tuple[str, Any]:
     if key == "sel":
         return ("sel", value.split(","))
 
+    if key == "reduce":
+        return ("reduce", value.split(","))
+
     raise ValueError(
         f"Unknown asset option '{key}'. "
         f"Valid options: {', '.join(sorted(VALID_ASSET_OPTIONS))}"
@@ -99,9 +102,11 @@ def _parse_asset(values: list[str]) -> list[AssetType]:
         - ``bands=red,green`` — band names
         - ``variables=vv,vh`` — variable names (for GeoZarr)
         - ``sel=time=2022-02-01`` — dimension selection (for GeoZarr)
+        - ``reduce=time::mean`` — reduction operation (for GeoZarr)
 
     Raises:
         ValueError: If an option is missing a ``key=value`` pair or uses an unknown key.
+
     """
     assets: list[AssetType] = []
     for v in values:

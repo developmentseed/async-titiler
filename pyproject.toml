@@ -2,7 +2,7 @@
 name = "async-titiler"
 description = "TiTiler but trully ==async."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = {file = "LICENSE"}
 authors = [
     {name = "Vincent Sarago", email = "vincent@developmentseed.com"},
@@ -15,7 +15,6 @@ classifiers = [
     "Intended Audience :: Information Technology",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
@@ -28,7 +27,9 @@ dependencies = [
     "titiler-core>=2.2,<2.3",
     "titiler-mosaic>=2.2,<2.3",
     "obstore",
-    "rio-tiler[geotiff,zarr]>=9.3,<10.0",
+    "zarr[cast-value-rs]>=3.2.0",
+#    "rio-tiler[geotiff,zarr]>=9.3,<10.0",
+    "rio-tiler[geotiff,zarr] @ git+https://github.com/cogeotiff/rio-tiler.git@b673fbb727a25453bc4182a9d2dd9722c4e7f77b",
     "starlette-cramjam>=0.7,<1.0",
     "pydantic-settings~=2.0",
     "rustac>=0.9.15,<1.0",

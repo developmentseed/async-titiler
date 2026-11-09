@@ -11,6 +11,7 @@ from rio_tiler.experimental.zarr import GeoZarrReader as AsyncGeoZarrReader
 from rio_tiler.io import AsyncBaseReader
 from rio_tiler.types import AssetInfo, AssetWithOptions
 
+from ..dependencies import _parse_reduce, _parse_sel
 from ..io import _get_geotiff, _get_geozarr
 
 _VALID_TYPE = {
@@ -76,7 +77,7 @@ class AsyncSTACReader(async_stac.AsyncSTACReader):
 
         return TIFFReader  # type: ignore
 
-    def _get_options(
+    def _get_options(  # noqa: C901
         self,
         asset: AssetWithOptions,
         metadata: pystac.Asset,
@@ -95,7 +96,10 @@ class AsyncSTACReader(async_stac.AsyncSTACReader):
             method_options["variables"] = vars
         # Sel (dimension selection)
         if vars := asset.get("sel"):
-            method_options["sel"] = vars
+            method_options["sel"] = _parse_sel(vars)
+        # Reduce (reduction operation)
+        if vars := asset.get("reduce"):
+            method_options["reduce"] = _parse_reduce(vars)
         # Bands
         if bands := asset.get("bands"):
             stac_bands = (

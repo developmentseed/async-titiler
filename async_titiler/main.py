@@ -27,8 +27,9 @@ from titiler.core.utils import accept_media_type, create_html_response, update_o
 from . import __version__ as async_titiler_version
 from .dependencies import (
     GeoTIFFPathParams,
+    GeoZarrDatasetParams,
+    GeoZarrLayerParams,
     GeoZARRPathParams,
-    LayerParams,
 )
 from .factories import AsyncTilerFactory
 from .settings import ApiSettings
@@ -50,7 +51,6 @@ jinja2_env = jinja2.Environment(
     loader=jinja2.ChoiceLoader(templates_location),
 )
 templates = Jinja2Templates(env=jinja2_env)
-
 
 app = FastAPI(
     title=settings.name,
@@ -92,12 +92,10 @@ app.add_middleware(
     },
 )
 
-
 optional_headers = []
 if settings.debug:
     app.add_middleware(LoggerMiddleware)
     optional_headers = [OptionalHeader.server_timing, OptionalHeader.x_assets]
-
 
 APP_CONFORMS_TO = {
     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/core",
@@ -125,13 +123,13 @@ app.include_router(
 
 APP_CONFORMS_TO.update(endoints.conforms_to)
 
-
 ###############################################################################
 # GeoZARR Endpoints
 endoints = AsyncTilerFactory(
     reader=AsyncGeoZarrReader,
     path_dependency=GeoZARRPathParams,
-    layer_dependency=LayerParams,
+    layer_dependency=GeoZarrLayerParams,
+    dataset_dependency=GeoZarrDatasetParams,
     add_viewer=True,
     templates=templates,
     router_prefix="/geozarr",
