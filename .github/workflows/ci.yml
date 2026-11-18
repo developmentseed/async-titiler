@@ -16,6 +16,7 @@ on:
       - '.pre-commit-config.yaml'
       - '.github/workflows/ci.yml'
       - 'uv.lock'
+      - 'Dockerfile'
 
   # Run tests on pull requests.
   pull_request:

@@ -9,7 +9,7 @@ LABEL stage=builder
 
 RUN apk add --no-cache \
     python-${PYTHON_VERSION} \
-    libstdc++ bash tzdata curl
+    libstdc++ bash tzdata curl git
 
 # uv as a pass-through stage rather than a direct COPY --from=<image>:
 # Dependabot only parses FROM lines (dependabot/dependabot-core#5103), so this
